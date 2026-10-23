@@ -1,5 +1,6 @@
 appId: com.yanxia.clinic
 productName: 燕霞诊所管理系统
+executableName: yanxia-clinic
 electronDist: node_modules/electron/dist
 npmRebuild: false
 directories:
@@ -11,6 +12,11 @@ asar: true
 extraResources:
   - from: node_modules/sql.js/dist/sql-wasm.wasm
     to: sql-wasm.wasm
+extraFiles:
+  - from: scripts/start-yanxia.cmd
+    to: 启动燕霞诊所管理系统.cmd
+  - from: docs/START-HERE.txt
+    to: 启动说明.txt
 win:
   target:
     - target: zip

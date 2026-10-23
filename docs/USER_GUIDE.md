@@ -2,11 +2,13 @@
 
 ## 1. 启动
 
-1. 解压 `YanxiaClinicManagementSystem-0.0.1-win-x64.zip`。
-2. 双击 `燕霞诊所管理系统.exe`。
+1. 解压 `YanxiaClinicManagementSystem-0.0.1-win-x64.zip` 到普通目录（如 `C:\Users\HP\Desktop` 或 `C:\Apps`）。
+2. 双击 `yanxia-clinic.exe`。
 3. 不需要安装、不需要登录、不需要联网。
 
-软件目录下的 `data/` 是数据文件夹，**不要手动改里面的文件**。搬走整个软件文件夹，数据就一起搬走。
+如果双击后没有窗口（常见于沙箱/AI 工具创建的低完整性桌面目录），请双击 `启动燕霞诊所管理系统.cmd`。它会把程序复制到 `%LOCALAPPDATA%\Programs\YanxiaClinicManagementSystem` 后启动，数据也保存在那里。更多见 [启动问题排查](TROUBLESHOOTING.md)。
+
+普通目录下，软件目录的 `data/` 是数据文件夹，**不要手动改里面的文件**。搬走整个软件文件夹，数据就一起搬走；使用启动脚本时，数据在 `%LOCALAPPDATA%\Programs\YanxiaClinicManagementSystem\data`。
 
 ## 2. 药房
 

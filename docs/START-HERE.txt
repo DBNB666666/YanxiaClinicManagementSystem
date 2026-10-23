@@ -1,0 +1,13 @@
+燕霞诊所管理系统 v0.0.1
+
+如果双击 yanxia-clinic.exe 没有出现窗口，请双击同目录的：
+    启动燕霞诊所管理系统.cmd
+
+原因：如果软件被解压到带“低完整性”标签的文件夹（例如某些沙箱/AI 工具创建的桌面目录），Windows 会限制 Electron 启动。
+启动脚本会先把程序复制到正常目录：
+    %LOCALAPPDATA%\Programs\YanxiaClinicManagementSystem
+然后从那里启动；数据也保存在该目录的 data 文件夹里。
+
+更简单的做法：把整个压缩包解压到 C:\Users\HP\Desktop 或 C:\Apps 这类普通目录，再双击 yanxia-clinic.exe。
+
+卸载：删除原解压文件夹，并删除 %LOCALAPPDATA%\Programs\YanxiaClinicManagementSystem。

@@ -16,6 +16,7 @@
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "test:e2e": "npm run build && playwright test",
+    "test:package": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-package-launch.ps1",
     "seed:test": "tsx scripts/seed-test-data.ts",
     "package:win": "npm run build && electron-builder --win zip",
     "verify": "npm run typecheck && npm run lint && npm run test && npm run build"

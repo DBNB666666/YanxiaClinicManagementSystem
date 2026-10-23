@@ -31,14 +31,20 @@
 
 ## 4. Electron 窗口验证
 
-当前开发会话中 Electron 主进程启动后，`app.whenReady` 不触发（进程在窗口初始化前卡住/崩溃），无法在本会话完成 Electron 窗口、系统打印对话框的人工验证。
+最初 Electron 从 `E:\Users\HP\Desktop\...` 启动时在 `app.whenReady` 前崩溃（crashpad `not connected`，Windows 事件 `0xc0000005`）。进一步排查发现：
+
+- `E:\Users\HP\Desktop` 带有 **Low Mandatory Level（低完整性）** 标签；
+- 该目录下的 `electron.exe` 被 Windows 以低完整性运行，Chromium 沙箱/缓存初始化失败；
+- 把同一份程序复制到 `C:\Users\HP\Desktop` 或 `%TEMP%`（普通目录）后，`app.whenReady` 正常触发，窗口标题“燕霞诊所管理系统”，并创建 `data/clinic.db`。
 
 处理方式：
 
-- UI 与真实服务改为在本机 Edge 中通过 Playwright 验证；服务、数据库、业务逻辑与桌面版一致。
-- Electron 打包产物已生成；窗口/系统打印需在目标 Windows 电脑上按验收报告手工复验。
+- 发布包改为 `yanxia-clinic.exe` + `启动燕霞诊所管理系统.cmd`；
+- 启动脚本把程序复制到 `%LOCALAPPDATA%\Programs\YanxiaClinicManagementSystem` 再启动；
+- `npm run test:package` 在低完整性目录解压并验证窗口/数据库创建；
+- 系统打印对话框仍需目标机器手工复验。
 
 ## 5. 结论
 
-- 数据层、业务层、PDF 生成、UI 流程均已自动化验证。
-- Electron 桌面壳和系统打印对话框属于环境限制导致的待手工复验项，不是代码未实现。
+- 数据层、业务层、PDF 生成、UI 流程、打包后窗口启动均已自动化验证。
+- 启动失败的根因是目录低完整性标签，不是业务代码；两种规避方式已写入使用说明。

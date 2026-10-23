@@ -2,11 +2,12 @@
 
 ## 环境/验收限制
 
-1. **本开发会话无法启动 Electron GUI**
-   - 本机 Electron 主进程在 `app.whenReady` 前无法完成窗口初始化（当前会话环境限制，Electron 进程启动后 ready 事件不触发）。
-   - 因此“Electron 窗口内的实际点击/系统打印对话框”未在本会话人工验证。
-   - 已用本机 Edge + Playwright 跑同一套渲染页面和真实 `ClinicService`/sql.js 服务，覆盖 14 条 UI 场景；核心业务另有 37 条 Vitest 用例。
-   - 交付前建议在目标 Windows 电脑上按 `docs/ACCEPTANCE_REPORT.md` 的“手工验收”再走一遍窗口、系统打印和 125%/150% 缩放。
+1. **低完整性目录会把 Electron 直接“静默杀死”**
+   - 本机 `E:\Users\HP\Desktop` 被沙箱/AI 工具设置了 **Low Mandatory Level（低完整性）**；解压到该目录后双击 exe 没有窗口、没有进程。
+   - 这不是业务代码崩溃，而是 Chromium/Electron 在创建窗口前被 Windows 限制；已通过 `npm run test:package` 在低完整性目录验证。
+   - 解决：解压到 `C:\Users\HP\Desktop` / `C:\Apps` 等普通目录，或双击包内 `启动燕霞诊所管理系统.cmd`（复制到 `%LOCALAPPDATA%` 后启动）。
+   - 详细排查与验证命令见 [TROUBLESHOOTING.md](TROUBLESHOOTING.md)。
+   - 其他 Windows 电脑/系统打印/125%/150% 缩放仍建议按 [ACCEPTANCE_REPORT.md](ACCEPTANCE_REPORT.md) 手工复验。
 
 2. **打印按钮走 PDF 阅读器**
    - “打印”生成 A5 PDF 后调用系统默认 PDF 阅读器打开，由用户在阅读器里按 `Ctrl+P` 打印；没有直接弹 Electron 打印对话框。若需要一键系统打印对话框，后续可加。
