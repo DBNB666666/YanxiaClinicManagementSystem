@@ -1,0 +1,14 @@
+node_modules/
+out/
+dist/
+release/
+coverage/
+test-results/
+playwright-report/
+.dev-data/
+data/
+.tmp/
+*.log
+.env
+.DS_Store
+Thumbs.db

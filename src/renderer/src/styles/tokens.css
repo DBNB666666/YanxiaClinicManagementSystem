@@ -1,0 +1,99 @@
+:root,
+[data-theme='light'] {
+  color-scheme: light;
+  --bg: #f2f5f5;
+  --surface: #ffffff;
+  --surface-alt: #f7f9f9;
+  --border: #dce3e4;
+  --divider: #e8eeef;
+  --text: #1d2a2c;
+  --text-secondary: #52656a;
+  --text-tertiary: #839397;
+  --primary: #2f6569;
+  --primary-hover: #27565a;
+  --primary-pressed: #1f4b4e;
+  --primary-soft: #e7f0f0;
+  --on-primary: #ffffff;
+  --success: #2f7a58;
+  --success-soft: #e6f2ec;
+  --warning: #9a6b1e;
+  --warning-soft: #f7efdf;
+  --danger: #b0443d;
+  --danger-soft: #f8e9e7;
+  --overlay: rgba(17, 24, 26, 0.35);
+  --shadow: 0 8px 24px rgba(16, 21, 24, 0.1);
+  --focus-ring: rgba(47, 101, 105, 0.3);
+  --scrollbar: #c6d1d2;
+  --font-size-base: 14px;
+  --line-height-base: 22px;
+  --table-row: 44px;
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #101518;
+  --surface: #181f23;
+  --surface-alt: #1f282c;
+  --border: #2b373b;
+  --divider: #232e32;
+  --text: #e3eaec;
+  --text-secondary: #a3b2b6;
+  --text-tertiary: #74858a;
+  --primary: #6faeaa;
+  --primary-hover: #82c0bc;
+  --primary-pressed: #5d9c98;
+  --primary-soft: #1e3335;
+  --on-primary: #0b1416;
+  --success: #66b58d;
+  --success-soft: #1b2e25;
+  --warning: #d3a75c;
+  --warning-soft: #2e2618;
+  --danger: #d9867d;
+  --danger-soft: #2f1f1d;
+  --overlay: rgba(0, 0, 0, 0.55);
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --focus-ring: rgba(143, 199, 195, 0.35);
+  --scrollbar: #3a4a4f;
+}
+
+[data-theme='reading'] {
+  color-scheme: light;
+  --bg: #efe8d8;
+  --surface: #f7f1e4;
+  --surface-alt: #f2ebdc;
+  --border: #dcd1bc;
+  --divider: #e5dcc9;
+  --text: #34302a;
+  --text-secondary: #665d4f;
+  --text-tertiary: #8a8070;
+  --primary: #4f6f5e;
+  --primary-hover: #446253;
+  --primary-pressed: #3a5547;
+  --primary-soft: #e2e9de;
+  --on-primary: #fffdf7;
+  --success: #4c7a5d;
+  --success-soft: #e1ebdd;
+  --warning: #8e6c2e;
+  --warning-soft: #efe4cb;
+  --danger: #a05a4e;
+  --danger-soft: #f0dfd9;
+  --overlay: rgba(52, 48, 42, 0.32);
+  --shadow: 0 8px 24px rgba(52, 48, 42, 0.12);
+  --focus-ring: rgba(79, 111, 94, 0.3);
+  --scrollbar: #c9bca3;
+  --font-size-base: 15px;
+  --line-height-base: 25px;
+  --table-row: 48px;
+}
+
+:root {
+  --radius-control: 6px;
+  --radius-card: 8px;
+  --radius-tag: 4px;
+  --control-height: 36px;
+  --small-control: 32px;
+  --page-padding: 24px;
+  --shadow-dialog: 0 18px 60px rgba(0, 0, 0, 0.22);
+  --font-ui: 'Microsoft YaHei UI', 'Microsoft YaHei', system-ui, sans-serif;
+  --font-number: 'Segoe UI', 'Microsoft YaHei UI', system-ui, sans-serif;
+}

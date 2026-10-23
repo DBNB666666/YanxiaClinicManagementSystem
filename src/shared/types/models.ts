@@ -1,0 +1,208 @@
+export type Theme = 'light' | 'dark' | 'reading'
+export type Gender = '男' | '女'
+export type DrugStatus = 'active' | 'stopped'
+export type FinancePeriod = 'day' | 'week' | 'month' | 'year'
+export type ViewMode = 'card' | 'list'
+export type DrugListFilter = 'all' | 'low' | 'stopped'
+
+export interface Drug {
+  id: number
+  name: string
+  unit: string
+  inboundDate: string
+  stockQty: number
+  warningQty: number
+  category: string
+  supplier: string
+  indications: string
+  costCents: number
+  priceCents: number
+  status: DrugStatus
+  createdAt: string
+  updatedAt: string
+  usageCount: number
+}
+
+export interface DrugInput {
+  name: string
+  unit: string
+  inboundDate: string
+  stockQty: number
+  warningQty: number
+  category: string
+  supplier: string
+  indications: string
+  costCents: number
+  priceCents: number
+}
+
+export interface Purchase {
+  id: number
+  drugId: number
+  purchaseDate: string
+  qty: number
+  unitCostCents: number
+  totalCents: number
+  createdAt: string
+}
+
+export interface DrugDetail extends Drug {
+  purchases: Purchase[]
+}
+
+export interface PurchaseInput {
+  drugId: number
+  purchaseDate: string
+  qty: number
+  unitCostCents: number
+}
+
+export interface PrescriptionItem {
+  id: number
+  prescriptionId: number
+  drugId: number
+  drugName: string
+  unit: string
+  qty: number
+  usage: string
+  frequency: string
+  unitPriceCents: number
+  unitCostCents: number
+  amountCents: number
+}
+
+export interface Prescription {
+  id: number
+  patientName: string
+  gender: Gender
+  age: string
+  diagnosis: string
+  issueDate: string
+  rp: string
+  doctor: string
+  drugAmountCents: number
+  injectionFeeCents: number
+  totalCents: number
+  costCents: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface PrescriptionSummary extends Prescription {
+  medicationText: string
+}
+
+export interface PrescriptionDetail extends Prescription {
+  items: PrescriptionItem[]
+}
+
+export interface PrescriptionItemInput {
+  id?: number
+  drugId: number
+  qty: number
+  usage: string
+  frequency: string
+}
+
+export interface PrescriptionInput {
+  patientName: string
+  gender: Gender
+  age: string
+  diagnosis: string
+  issueDate: string
+  rp: string
+  doctor: string
+  items: PrescriptionItemInput[]
+  injectionFeeCents: number
+  manualDrugAmountCents?: number | null
+}
+
+export interface PrescriptionSaveResult {
+  id: number
+  warnings: string[]
+}
+
+export interface Notification {
+  id: number
+  drugId: number
+  drugName: string
+  stockQty: number
+  warningQty: number
+  reason: string
+  createdAt: string
+  readAt: string | null
+}
+
+export interface Settings {
+  theme: Theme
+  lastDoctor: string
+  viewModes: Record<'prescriptions' | 'pharmacy', ViewMode>
+  lastExportDir: string
+}
+
+export interface FinanceSummary {
+  revenueCents: number
+  costCents: number
+  profitCents: number
+  count: number
+}
+
+export interface FinanceRow {
+  key: string
+  label: string
+  revenueCents: number
+  costCents: number
+  profitCents: number
+  count: number
+}
+
+export interface FinanceResult {
+  period: FinancePeriod
+  anchorDate: string
+  from: string
+  to: string
+  summary: FinanceSummary
+  rows: FinanceRow[]
+}
+
+export interface FinanceDetails {
+  key: string
+  label: string
+  items: PrescriptionSummary[]
+}
+
+export interface ListResult<T> {
+  items: T[]
+  total: number
+}
+
+export interface AppInfo {
+  version: string
+  dataDir: string
+  lastBackupAt: string | null
+}
+
+export interface DrugListQuery {
+  query?: string
+  filter?: DrugListFilter
+  page?: number
+  pageSize?: number
+}
+
+export interface PrescriptionListQuery {
+  query?: string
+  dateFrom?: string
+  dateTo?: string
+  page?: number
+  pageSize?: number
+}
+
+export interface FinanceQuery {
+  period: FinancePeriod
+  anchorDate: string
+}
+
+export interface FinanceDetailsQuery extends FinanceQuery {
+  key: string
+  label?: string
+}

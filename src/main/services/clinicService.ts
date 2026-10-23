@@ -1,0 +1,1040 @@
+import type {
+  Drug,
+  DrugDetail,
+  DrugInput,
+  DrugListQuery,
+  FinanceDetails,
+  FinanceDetailsQuery,
+  FinanceQuery,
+  FinanceResult,
+  FinanceRow,
+  FinanceSummary,
+  Gender,
+  ListResult,
+  Notification,
+  PrescriptionDetail,
+  PrescriptionInput,
+  PrescriptionItem,
+  PrescriptionListQuery,
+  PrescriptionSaveResult,
+  PrescriptionSummary,
+  Purchase,
+  PurchaseInput,
+  Settings
+} from '../../shared/types/models'
+import { AppError } from '../../shared/result'
+import { formatCents, multiplyCents, sumCents } from '../../shared/money'
+import { getGroupLabel, getPeriodRange, nowIso, formatDateTime } from '../../shared/date'
+import {
+  drugInputSchema,
+  drugListQuerySchema,
+  financeDetailsQuerySchema,
+  financeQuerySchema,
+  idSchema,
+  prescriptionInputSchema,
+  prescriptionListQuerySchema,
+  purchaseInputSchema,
+  settingsPatchSchema
+} from '../../shared/validation'
+import type { SqliteStore } from '../db/store'
+
+interface DrugRow {
+  id: number
+  name: string
+  unit: string
+  inbound_date: string
+  stock_qty: number
+  warning_qty: number
+  category: string
+  supplier: string
+  indications: string
+  cost_cents: number
+  price_cents: number
+  status: 'active' | 'stopped'
+  created_at: string
+  updated_at: string
+  usage_count: number
+}
+
+interface PurchaseRow {
+  id: number
+  drug_id: number
+  purchase_date: string
+  qty: number
+  unit_cost_cents: number
+  total_cents: number
+  created_at: string
+}
+
+interface PrescriptionRow {
+  id: number
+  patient_name: string
+  gender: Gender
+  age: string
+  diagnosis: string
+  issue_date: string
+  rp: string
+  doctor: string
+  drug_amount_cents: number
+  injection_fee_cents: number
+  total_cents: number
+  created_at: string
+  updated_at: string
+  cost_cents?: number
+  medication_text?: string
+}
+
+interface PrescriptionItemRow {
+  id: number
+  prescription_id: number
+  drug_id: number
+  drug_name: string
+  unit: string
+  qty: number
+  usage: string
+  frequency: string
+  unit_price_cents: number
+  unit_cost_cents: number
+  amount_cents: number
+}
+
+interface NotificationRow {
+  id: number
+  drug_id: number
+  drug_name: string
+  stock_qty: number
+  warning_qty: number
+  reason: string
+  created_at: string
+  read_at: string | null
+}
+
+interface SettingsRow {
+  key: string
+  value: string
+}
+
+const DEFAULT_SETTINGS: Settings = {
+  theme: 'light',
+  lastDoctor: '',
+  viewModes: { prescriptions: 'card', pharmacy: 'card' },
+  lastExportDir: ''
+}
+
+function mapDrug(row: DrugRow): Drug {
+  return {
+    id: Number(row.id),
+    name: row.name,
+    unit: row.unit,
+    inboundDate: row.inbound_date,
+    stockQty: Number(row.stock_qty),
+    warningQty: Number(row.warning_qty),
+    category: row.category,
+    supplier: row.supplier,
+    indications: row.indications,
+    costCents: Number(row.cost_cents),
+    priceCents: Number(row.price_cents),
+    status: row.status,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    usageCount: Number(row.usage_count ?? 0)
+  }
+}
+
+function mapPurchase(row: PurchaseRow): Purchase {
+  return {
+    id: Number(row.id),
+    drugId: Number(row.drug_id),
+    purchaseDate: row.purchase_date,
+    qty: Number(row.qty),
+    unitCostCents: Number(row.unit_cost_cents),
+    totalCents: Number(row.total_cents),
+    createdAt: row.created_at
+  }
+}
+
+function mapItem(row: PrescriptionItemRow): PrescriptionItem {
+  return {
+    id: Number(row.id),
+    prescriptionId: Number(row.prescription_id),
+    drugId: Number(row.drug_id),
+    drugName: row.drug_name,
+    unit: row.unit,
+    qty: Number(row.qty),
+    usage: row.usage,
+    frequency: row.frequency,
+    unitPriceCents: Number(row.unit_price_cents),
+    unitCostCents: Number(row.unit_cost_cents),
+    amountCents: Number(row.amount_cents)
+  }
+}
+
+function mapSummary(row: PrescriptionRow): PrescriptionSummary {
+  return {
+    id: Number(row.id),
+    patientName: row.patient_name,
+    gender: row.gender,
+    age: row.age,
+    diagnosis: row.diagnosis,
+    issueDate: row.issue_date,
+    rp: row.rp,
+    doctor: row.doctor,
+    drugAmountCents: Number(row.drug_amount_cents),
+    injectionFeeCents: Number(row.injection_fee_cents),
+    totalCents: Number(row.total_cents),
+    costCents: Number(row.cost_cents ?? 0),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    medicationText: row.medication_text ?? ''
+  }
+}
+
+function mapNotification(row: NotificationRow): Notification {
+  return {
+    id: Number(row.id),
+    drugId: Number(row.drug_id),
+    drugName: row.drug_name,
+    stockQty: Number(row.stock_qty),
+    warningQty: Number(row.warning_qty),
+    reason: row.reason,
+    createdAt: row.created_at,
+    readAt: row.read_at
+  }
+}
+
+function localDateOf(iso: string): string {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return iso.slice(0, 10)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+export class ClinicService {
+  constructor(
+    private readonly store: SqliteStore,
+    private readonly onDataChanged?: () => void
+  ) {}
+
+  // ---------- 药品 ----------
+
+  listDrugs(rawQuery: DrugListQuery): ListResult<Drug> {
+    const query = drugListQuerySchema.parse(rawQuery ?? {})
+    const page = query.page ?? 1
+    const pageSize = query.pageSize ?? 20
+    const where: string[] = []
+    const params: (string | number)[] = []
+
+    if (query.filter === 'low') {
+      where.push("d.status = 'active' AND d.stock_qty <= d.warning_qty")
+    } else if (query.filter === 'stopped') {
+      where.push("d.status = 'stopped'")
+    } else {
+      where.push("d.status = 'active'")
+    }
+
+    if (query.query) {
+      where.push('(d.name LIKE ? OR d.category LIKE ? OR d.supplier LIKE ?)')
+      const like = `%${query.query}%`
+      params.push(like, like, like)
+    }
+
+    const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : ''
+    const totalRow = this.store.queryOne<{ total: number }>(
+      `SELECT COUNT(*) AS total FROM drugs d ${whereSql}`,
+      params
+    )
+    const rows = this.store.queryAll<DrugRow>(
+      `SELECT d.*,
+        (SELECT COUNT(DISTINCT p.id)
+           FROM prescription_items i
+           JOIN prescriptions p ON p.id = i.prescription_id
+          WHERE i.drug_id = d.id) AS usage_count
+       FROM drugs d ${whereSql}
+       ORDER BY d.inbound_date DESC, d.name ASC
+       LIMIT ? OFFSET ?`,
+      [...params, pageSize, (page - 1) * pageSize]
+    )
+    return { items: rows.map(mapDrug), total: Number(totalRow?.total ?? 0) }
+  }
+
+  getDrug(id: number): DrugDetail {
+    const safeId = idSchema.parse(id)
+    const row = this.store.queryOne<DrugRow>(
+      `SELECT d.*,
+        (SELECT COUNT(DISTINCT p.id)
+           FROM prescription_items i
+           JOIN prescriptions p ON p.id = i.prescription_id
+          WHERE i.drug_id = d.id) AS usage_count
+       FROM drugs d WHERE d.id = ?`,
+      [safeId]
+    )
+    if (!row) throw new AppError('NOT_FOUND', '药品不存在')
+    const purchases = this.store.queryAll<PurchaseRow>(
+      'SELECT * FROM purchases WHERE drug_id = ? ORDER BY purchase_date DESC, id DESC',
+      [safeId]
+    )
+    return { ...mapDrug(row), purchases: purchases.map(mapPurchase) }
+  }
+
+  createDrug(input: DrugInput): { id: number } {
+    const drug = drugInputSchema.parse(input)
+    const now = nowIso()
+    const id = this.store.insert(
+      `INSERT INTO drugs
+        (name, unit, inbound_date, stock_qty, warning_qty, category, supplier, indications,
+         cost_cents, price_cents, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`,
+      [
+        drug.name,
+        drug.unit,
+        drug.inboundDate,
+        drug.stockQty,
+        drug.warningQty,
+        drug.category,
+        drug.supplier,
+        drug.indications,
+        drug.costCents,
+        drug.priceCents,
+        now,
+        now
+      ]
+    )
+    this.syncDrugNotification(id)
+    this.onDataChanged?.()
+    return { id }
+  }
+
+  updateDrug(id: number, input: DrugInput): { id: number } {
+    const safeId = idSchema.parse(id)
+    const drug = drugInputSchema.parse(input)
+    const existing = this.store.queryOne<DrugRow>('SELECT * FROM drugs WHERE id = ?', [safeId])
+    if (!existing) throw new AppError('NOT_FOUND', '药品不存在')
+    this.store.run(
+      `UPDATE drugs SET name = ?, unit = ?, inbound_date = ?, stock_qty = ?, warning_qty = ?,
+         category = ?, supplier = ?, indications = ?, cost_cents = ?, price_cents = ?, updated_at = ?
+       WHERE id = ?`,
+      [
+        drug.name,
+        drug.unit,
+        drug.inboundDate,
+        drug.stockQty,
+        drug.warningQty,
+        drug.category,
+        drug.supplier,
+        drug.indications,
+        drug.costCents,
+        drug.priceCents,
+        nowIso(),
+        safeId
+      ]
+    )
+    this.syncDrugNotification(safeId)
+    this.onDataChanged?.()
+    return { id: safeId }
+  }
+
+  setDrugStatus(id: number, status: 'active' | 'stopped'): { id: number } {
+    const safeId = idSchema.parse(id)
+    if (status !== 'active' && status !== 'stopped') {
+      throw new AppError('VALIDATION_ERROR', '状态不正确')
+    }
+    const result = this.store.run('UPDATE drugs SET status = ?, updated_at = ? WHERE id = ?', [
+      status,
+      nowIso(),
+      safeId
+    ])
+    if (result === 0) throw new AppError('NOT_FOUND', '药品不存在')
+    this.onDataChanged?.()
+    return { id: safeId }
+  }
+
+  deleteDrug(id: number): { id: number } {
+    const safeId = idSchema.parse(id)
+    const usage = this.store.queryOne<{ count: number }>(
+      'SELECT COUNT(*) AS count FROM prescription_items WHERE drug_id = ?',
+      [safeId]
+    )
+    if (Number(usage?.count ?? 0) > 0) {
+      throw new AppError('DRUG_IN_USE', '该药品已被处方使用，只能停用')
+    }
+    const purchases = this.store.queryOne<{ count: number }>(
+      'SELECT COUNT(*) AS count FROM purchases WHERE drug_id = ?',
+      [safeId]
+    )
+    if (Number(purchases?.count ?? 0) > 0) {
+      throw new AppError('DRUG_IN_USE', '该药品有进货记录，不能删除，只能停用')
+    }
+    this.store.run('DELETE FROM drugs WHERE id = ?', [safeId])
+    this.onDataChanged?.()
+    return { id: safeId }
+  }
+
+  purchaseDrug(input: PurchaseInput): { purchaseId: number; stockQty: number; costCents: number } {
+    const parsed = purchaseInputSchema.parse(input)
+    const drug = this.store.queryOne<DrugRow>('SELECT * FROM drugs WHERE id = ?', [parsed.drugId])
+    if (!drug) throw new AppError('NOT_FOUND', '药品不存在')
+    if (drug.status === 'stopped') throw new AppError('VALIDATION_ERROR', '停用药品不能进货')
+    const now = nowIso()
+    const result = this.store.transaction(() => {
+      const purchaseId = this.store.insert(
+        `INSERT INTO purchases (drug_id, purchase_date, qty, unit_cost_cents, total_cents, created_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [
+          parsed.drugId,
+          parsed.purchaseDate,
+          parsed.qty,
+          parsed.unitCostCents,
+          multiplyCents(parsed.qty, parsed.unitCostCents),
+          now
+        ]
+      )
+      this.store.run(
+        `UPDATE drugs SET stock_qty = stock_qty + ?, cost_cents = ?, updated_at = ? WHERE id = ?`,
+        [parsed.qty, parsed.unitCostCents, now, parsed.drugId]
+      )
+      this.syncDrugNotification(parsed.drugId)
+      const updated = this.store.queryOne<DrugRow>('SELECT * FROM drugs WHERE id = ?', [
+        parsed.drugId
+      ])
+      return {
+        purchaseId,
+        stockQty: Number(updated?.stock_qty ?? 0),
+        costCents: Number(updated?.cost_cents ?? 0)
+      }
+    })
+    this.onDataChanged?.()
+    return result
+  }
+
+  lowStockCount(): { count: number } {
+    const row = this.store.queryOne<{ count: number }>(
+      "SELECT COUNT(*) AS count FROM drugs WHERE status = 'active' AND stock_qty <= warning_qty"
+    )
+    return { count: Number(row?.count ?? 0) }
+  }
+
+  // ---------- 处方 ----------
+
+  listPrescriptions(rawQuery: PrescriptionListQuery): ListResult<PrescriptionSummary> {
+    const query = prescriptionListQuerySchema.parse(rawQuery ?? {})
+    const page = query.page ?? 1
+    const pageSize = query.pageSize ?? 20
+    const where: string[] = []
+    const params: (string | number)[] = []
+
+    if (query.query) {
+      where.push('(patient_name LIKE ? OR diagnosis LIKE ?)')
+      const like = `%${query.query}%`
+      params.push(like, like)
+    }
+    if (query.dateFrom) {
+      where.push('issue_date >= ?')
+      params.push(query.dateFrom)
+    }
+    if (query.dateTo) {
+      where.push('issue_date <= ?')
+      params.push(query.dateTo)
+    }
+    const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : ''
+    const totalRow = this.store.queryOne<{ total: number }>(
+      `SELECT COUNT(*) AS total FROM prescriptions ${whereSql}`,
+      params
+    )
+    const rows = this.store.queryAll<PrescriptionRow>(
+      `SELECT p.*,
+        (SELECT COALESCE(SUM(i.unit_cost_cents * i.qty), 0)
+           FROM prescription_items i WHERE i.prescription_id = p.id) AS cost_cents,
+        (SELECT GROUP_CONCAT(i.drug_name, '、')
+           FROM prescription_items i WHERE i.prescription_id = p.id) AS medication_text
+       FROM prescriptions p ${whereSql}
+       ORDER BY p.issue_date DESC, p.id DESC
+       LIMIT ? OFFSET ?`,
+      [...params, pageSize, (page - 1) * pageSize]
+    )
+    return { items: rows.map(mapSummary), total: Number(totalRow?.total ?? 0) }
+  }
+
+  getPrescription(id: number): PrescriptionDetail {
+    const safeId = idSchema.parse(id)
+    const row = this.store.queryOne<PrescriptionRow>(
+      `SELECT p.*,
+        (SELECT COALESCE(SUM(i.unit_cost_cents * i.qty), 0)
+           FROM prescription_items i WHERE i.prescription_id = p.id) AS cost_cents
+       FROM prescriptions p WHERE p.id = ?`,
+      [safeId]
+    )
+    if (!row) throw new AppError('NOT_FOUND', '处方不存在')
+    const itemRows = this.store.queryAll<PrescriptionItemRow>(
+      'SELECT * FROM prescription_items WHERE prescription_id = ? ORDER BY sort_order, id',
+      [safeId]
+    )
+    return { ...mapSummary(row), items: itemRows.map(mapItem) }
+  }
+
+  createPrescription(
+    input: PrescriptionInput,
+    allowNegativeStock = false
+  ): PrescriptionSaveResult {
+    const parsed = prescriptionInputSchema.parse(input)
+    const now = nowIso()
+    const result = this.store.transaction(() => {
+      const prepared = parsed.items.map((item, index) => {
+        const drug = this.store.queryOne<DrugRow>('SELECT * FROM drugs WHERE id = ?', [item.drugId])
+        if (!drug) throw new AppError('NOT_FOUND', `药品不存在：${item.drugId}`)
+        if (drug.status !== 'active') {
+          throw new AppError('VALIDATION_ERROR', `药品已停用：${drug.name}`)
+        }
+        const amountCents = multiplyCents(item.qty, Number(drug.price_cents))
+        return {
+          item,
+          index,
+          drug,
+          amountCents,
+          costCents: multiplyCents(item.qty, Number(drug.cost_cents)),
+          unitPriceCents: Number(drug.price_cents),
+          unitCostCents: Number(drug.cost_cents)
+        }
+      })
+
+      const automaticDrugAmount = sumCents(prepared.map((row) => row.amountCents))
+      const drugAmountCents =
+        parsed.manualDrugAmountCents != null
+          ? parsed.manualDrugAmountCents
+          : automaticDrugAmount
+      const totalCents = drugAmountCents + parsed.injectionFeeCents
+
+      const warnings = prepared
+        .filter((row) => Number(row.drug.stock_qty) < row.item.qty)
+        .map(
+          (row) =>
+            `${row.drug.name}：需要 ${row.item.qty}${row.drug.unit}，当前 ${row.drug.stock_qty}${row.drug.unit}`
+        )
+      if (warnings.length > 0 && !allowNegativeStock) {
+        throw new AppError('STOCK_INSUFFICIENT', '库存不足', warnings)
+      }
+
+      const prescriptionId = this.store.insert(
+        `INSERT INTO prescriptions
+          (patient_name, gender, age, diagnosis, issue_date, rp, doctor,
+           drug_amount_cents, injection_fee_cents, total_cents, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          parsed.patientName,
+          parsed.gender,
+          parsed.age,
+          parsed.diagnosis,
+          parsed.issueDate,
+          parsed.rp,
+          parsed.doctor,
+          drugAmountCents,
+          parsed.injectionFeeCents,
+          totalCents,
+          now,
+          now
+        ]
+      )
+
+      for (const row of prepared) {
+        this.store.insert(
+          `INSERT INTO prescription_items
+            (prescription_id, drug_id, drug_name, unit, qty, usage, frequency,
+             unit_price_cents, unit_cost_cents, amount_cents, sort_order)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            prescriptionId,
+            row.item.drugId,
+            row.drug.name,
+            row.drug.unit,
+            row.item.qty,
+            row.item.usage,
+            row.item.frequency,
+            row.unitPriceCents,
+            row.unitCostCents,
+            row.amountCents,
+            row.index
+          ]
+        )
+        this.store.run('UPDATE drugs SET stock_qty = stock_qty - ?, updated_at = ? WHERE id = ?', [
+          row.item.qty,
+          now,
+          row.item.drugId
+        ])
+        this.syncDrugNotification(row.item.drugId)
+      }
+
+      return { id: prescriptionId, warnings }
+    })
+    this.onDataChanged?.()
+    return result
+  }
+
+  updatePrescription(
+    id: number,
+    input: PrescriptionInput,
+    allowNegativeStock = false
+  ): PrescriptionSaveResult {
+    const safeId = idSchema.parse(id)
+    const parsed = prescriptionInputSchema.parse(input)
+    const now = nowIso()
+    const result = this.store.transaction(() => {
+      const existing = this.store.queryOne<PrescriptionRow>('SELECT * FROM prescriptions WHERE id = ?', [
+        safeId
+      ])
+      if (!existing) throw new AppError('NOT_FOUND', '处方不存在')
+      const oldItems = this.store.queryAll<PrescriptionItemRow>(
+        'SELECT * FROM prescription_items WHERE prescription_id = ? ORDER BY sort_order, id',
+        [safeId]
+      )
+      const oldById = new Map(oldItems.map((item) => [Number(item.id), item]))
+
+      const prepared = parsed.items.map((item, index) => {
+        const old = item.id ? oldById.get(item.id) : undefined
+        if (item.id && !old) throw new AppError('VALIDATION_ERROR', '处方明细不存在')
+        if (old) {
+          return {
+            item,
+            index,
+            old,
+            drugName: old.drug_name,
+            unit: old.unit,
+            unitPriceCents: Number(old.unit_price_cents),
+            unitCostCents: Number(old.unit_cost_cents),
+            amountCents: multiplyCents(item.qty, Number(old.unit_price_cents))
+          }
+        }
+        const drug = this.store.queryOne<DrugRow>('SELECT * FROM drugs WHERE id = ?', [item.drugId])
+        if (!drug) throw new AppError('NOT_FOUND', `药品不存在：${item.drugId}`)
+        if (drug.status !== 'active') {
+          throw new AppError('VALIDATION_ERROR', `药品已停用：${drug.name}`)
+        }
+        return {
+          item,
+          index,
+          old: null,
+          drugName: drug.name,
+          unit: drug.unit,
+          unitPriceCents: Number(drug.price_cents),
+          unitCostCents: Number(drug.cost_cents),
+          amountCents: multiplyCents(item.qty, Number(drug.price_cents))
+        }
+      })
+
+      const automaticDrugAmount = sumCents(prepared.map((row) => row.amountCents))
+      const drugAmountCents =
+        parsed.manualDrugAmountCents != null
+          ? parsed.manualDrugAmountCents
+          : automaticDrugAmount
+      const totalCents = drugAmountCents + parsed.injectionFeeCents
+
+      const stockDelta = new Map<number, number>()
+      for (const old of oldItems) {
+        stockDelta.set(Number(old.drug_id), (stockDelta.get(Number(old.drug_id)) ?? 0) + Number(old.qty))
+      }
+      for (const row of prepared) {
+        const drugId = row.old ? Number(row.old.drug_id) : row.item.drugId
+        stockDelta.set(drugId, (stockDelta.get(drugId) ?? 0) - row.item.qty)
+      }
+
+      const warnings: string[] = []
+      for (const [drugId, delta] of stockDelta.entries()) {
+        const drug = this.store.queryOne<DrugRow>('SELECT * FROM drugs WHERE id = ?', [drugId])
+        if (!drug) continue
+        const finalStock = Number(drug.stock_qty) + delta
+        if (finalStock < 0) {
+          warnings.push(
+            `${drug.name}：需要 ${Math.abs(delta)}${drug.unit}，当前 ${drug.stock_qty}${drug.unit}`
+          )
+        }
+      }
+      if (warnings.length > 0 && !allowNegativeStock) {
+        throw new AppError('STOCK_INSUFFICIENT', '库存不足', warnings)
+      }
+
+      this.store.run(
+        `UPDATE prescriptions SET patient_name = ?, gender = ?, age = ?, diagnosis = ?,
+           issue_date = ?, rp = ?, doctor = ?, drug_amount_cents = ?, injection_fee_cents = ?,
+           total_cents = ?, updated_at = ?
+         WHERE id = ?`,
+        [
+          parsed.patientName,
+          parsed.gender,
+          parsed.age,
+          parsed.diagnosis,
+          parsed.issueDate,
+          parsed.rp,
+          parsed.doctor,
+          drugAmountCents,
+          parsed.injectionFeeCents,
+          totalCents,
+          now,
+          safeId
+        ]
+      )
+
+      const keepIds = new Set(prepared.filter((row) => row.old).map((row) => Number(row.old!.id)))
+      for (const old of oldItems) {
+        if (!keepIds.has(Number(old.id))) {
+          this.store.run('DELETE FROM prescription_items WHERE id = ?', [Number(old.id)])
+        }
+      }
+
+      for (const row of prepared) {
+        if (row.old) {
+          this.store.run(
+            `UPDATE prescription_items
+             SET qty = ?, usage = ?, frequency = ?, amount_cents = ?, sort_order = ?
+             WHERE id = ?`,
+            [
+              row.item.qty,
+              row.item.usage,
+              row.item.frequency,
+              row.amountCents,
+              row.index,
+              Number(row.old.id)
+            ]
+          )
+        } else {
+          this.store.insert(
+            `INSERT INTO prescription_items
+              (prescription_id, drug_id, drug_name, unit, qty, usage, frequency,
+               unit_price_cents, unit_cost_cents, amount_cents, sort_order)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              safeId,
+              row.item.drugId,
+              row.drugName,
+              row.unit,
+              row.item.qty,
+              row.item.usage,
+              row.item.frequency,
+              row.unitPriceCents,
+              row.unitCostCents,
+              row.amountCents,
+              row.index
+            ]
+          )
+        }
+      }
+
+      for (const [drugId, delta] of stockDelta.entries()) {
+        if (delta === 0) continue
+        this.store.run('UPDATE drugs SET stock_qty = stock_qty + ?, updated_at = ? WHERE id = ?', [
+          delta,
+          now,
+          drugId
+        ])
+        this.syncDrugNotification(drugId)
+      }
+
+      return { id: safeId, warnings }
+    })
+    this.onDataChanged?.()
+    return result
+  }
+
+  deletePrescription(id: number): { id: number } {
+    const safeId = idSchema.parse(id)
+    this.store.transaction(() => {
+      const existing = this.store.queryOne<PrescriptionRow>('SELECT * FROM prescriptions WHERE id = ?', [
+        safeId
+      ])
+      if (!existing) throw new AppError('NOT_FOUND', '处方不存在')
+      const items = this.store.queryAll<PrescriptionItemRow>(
+        'SELECT * FROM prescription_items WHERE prescription_id = ?',
+        [safeId]
+      )
+      const now = nowIso()
+      for (const item of items) {
+        this.store.run('UPDATE drugs SET stock_qty = stock_qty + ?, updated_at = ? WHERE id = ?', [
+          Number(item.qty),
+          now,
+          Number(item.drug_id)
+        ])
+      }
+      this.store.run('DELETE FROM prescriptions WHERE id = ?', [safeId])
+      for (const item of items) {
+        this.syncDrugNotification(Number(item.drug_id))
+      }
+    })
+    this.onDataChanged?.()
+    return { id: safeId }
+  }
+
+  // ---------- 财务 ----------
+
+  financeSummary(rawQuery: FinanceQuery): FinanceResult {
+    const query = financeQuerySchema.parse(rawQuery)
+    const range = getPeriodRange(query.period, query.anchorDate)
+    const summary = this.financeTotals(range.from, range.to)
+    const rows =
+      query.period === 'day'
+        ? this.financeDayRows(range.from)
+        : this.financeGroupRows(query.period, range.from, range.to)
+    return {
+      period: query.period,
+      anchorDate: query.anchorDate,
+      from: range.from,
+      to: range.to,
+      summary,
+      rows
+    }
+  }
+
+  financeDetails(rawQuery: FinanceDetailsQuery): FinanceDetails {
+    const query = financeDetailsQuerySchema.parse(rawQuery)
+    if (query.key.startsWith('p-')) {
+      const id = Number(query.key.slice(2))
+      const prescription = this.getPrescription(id)
+      const { items, ...base } = prescription
+      return {
+        key: query.key,
+        label: `${prescription.patientName} · ${prescription.issueDate}`,
+        items: [
+          {
+            ...base,
+            medicationText: items.map((item) => item.drugName).join('、')
+          }
+        ]
+      }
+    }
+    let from = query.key
+    let to = query.key
+    if (query.period === 'week' || query.period === 'month') {
+      from = query.key
+      to = query.key
+    } else if (query.period === 'year') {
+      from = `${query.key}-01`
+      to = `${query.key}-31`
+    }
+    const rows = this.store.queryAll<PrescriptionRow>(
+      `SELECT p.*,
+        (SELECT COALESCE(SUM(i.unit_cost_cents * i.qty), 0)
+           FROM prescription_items i WHERE i.prescription_id = p.id) AS cost_cents,
+        (SELECT GROUP_CONCAT(i.drug_name, '、')
+           FROM prescription_items i WHERE i.prescription_id = p.id) AS medication_text
+       FROM prescriptions p
+       WHERE p.issue_date >= ? AND p.issue_date <= ?
+       ORDER BY p.issue_date DESC, p.id DESC`,
+      [from, to]
+    )
+    return {
+      key: query.key,
+      label: query.label ?? query.key,
+      items: rows.map(mapSummary)
+    }
+  }
+
+  private financeTotals(from: string, to: string): FinanceSummary {
+    const row = this.store.queryOne<{
+      count: number
+      revenue_cents: number
+      cost_cents: number
+    }>(
+      `SELECT COUNT(*) AS count,
+        COALESCE(SUM(p.drug_amount_cents + p.injection_fee_cents), 0) AS revenue_cents,
+        COALESCE(SUM((
+          SELECT SUM(i.unit_cost_cents * i.qty)
+          FROM prescription_items i WHERE i.prescription_id = p.id
+        )), 0) AS cost_cents
+       FROM prescriptions p WHERE p.issue_date >= ? AND p.issue_date <= ?`,
+      [from, to]
+    )
+    const revenue = Number(row?.revenue_cents ?? 0)
+    const cost = Number(row?.cost_cents ?? 0)
+    return {
+      revenueCents: revenue,
+      costCents: cost,
+      profitCents: revenue - cost,
+      count: Number(row?.count ?? 0)
+    }
+  }
+
+  private financeDayRows(date: string): FinanceRow[] {
+    const rows = this.store.queryAll<PrescriptionRow>(
+      `SELECT p.*,
+        (SELECT COALESCE(SUM(i.unit_cost_cents * i.qty), 0)
+           FROM prescription_items i WHERE i.prescription_id = p.id) AS cost_cents,
+        (SELECT GROUP_CONCAT(i.drug_name, '、')
+           FROM prescription_items i WHERE i.prescription_id = p.id) AS medication_text
+       FROM prescriptions p WHERE p.issue_date = ? ORDER BY p.id DESC`,
+      [date]
+    )
+    return rows.map((row) => {
+      const revenue = Number(row.drug_amount_cents) + Number(row.injection_fee_cents)
+      const cost = Number(row.cost_cents ?? 0)
+      return {
+        key: `p-${row.id}`,
+        label: `${row.patient_name} · ${row.issue_date}`,
+        revenueCents: revenue,
+        costCents: cost,
+        profitCents: revenue - cost,
+        count: 1
+      }
+    })
+  }
+
+  private financeGroupRows(period: 'week' | 'month' | 'year', from: string, to: string): FinanceRow[] {
+    const groupExpr = period === 'year' ? "substr(p.issue_date, 1, 7)" : 'p.issue_date'
+    const rows = this.store.queryAll<{
+      group_key: string
+      count: number
+      revenue_cents: number
+      cost_cents: number
+    }>(
+      `SELECT ${groupExpr} AS group_key,
+        COUNT(*) AS count,
+        COALESCE(SUM(p.drug_amount_cents + p.injection_fee_cents), 0) AS revenue_cents,
+        COALESCE(SUM((
+          SELECT SUM(i.unit_cost_cents * i.qty)
+          FROM prescription_items i WHERE i.prescription_id = p.id
+        )), 0) AS cost_cents
+       FROM prescriptions p
+       WHERE p.issue_date >= ? AND p.issue_date <= ?
+       GROUP BY ${groupExpr}
+       ORDER BY group_key ASC`,
+      [from, to]
+    )
+    return rows.map((row) => {
+      const revenue = Number(row.revenue_cents)
+      const cost = Number(row.cost_cents)
+      return {
+        key: row.group_key,
+        label: getGroupLabel(period, row.group_key),
+        revenueCents: revenue,
+        costCents: cost,
+        profitCents: revenue - cost,
+        count: Number(row.count)
+      }
+    })
+  }
+
+  // ---------- 通知 ----------
+
+  listNotifications(): { items: Notification[]; unreadCount: number } {
+    const rows = this.store.queryAll<NotificationRow>(
+      'SELECT * FROM notifications ORDER BY created_at DESC, id DESC LIMIT 100'
+    )
+    return {
+      items: rows.map(mapNotification),
+      unreadCount: rows.filter((row) => !row.read_at).length
+    }
+  }
+
+  unreadNotificationCount(): { count: number } {
+    const row = this.store.queryOne<{ count: number }>(
+      'SELECT COUNT(*) AS count FROM notifications WHERE read_at IS NULL'
+    )
+    return { count: Number(row?.count ?? 0) }
+  }
+
+  markNotificationRead(id: number): { unreadCount: number } {
+    const safeId = idSchema.parse(id)
+    this.store.run('UPDATE notifications SET read_at = ? WHERE id = ? AND read_at IS NULL', [
+      nowIso(),
+      safeId
+    ])
+    this.onDataChanged?.()
+    return { unreadCount: this.unreadNotificationCount().count }
+  }
+
+  markAllNotificationsRead(): { unreadCount: number } {
+    this.store.run('UPDATE notifications SET read_at = ? WHERE read_at IS NULL', [nowIso()])
+    this.onDataChanged?.()
+    return { unreadCount: 0 }
+  }
+
+  syncAllNotifications(): void {
+    const drugs = this.store.queryAll<DrugRow>(
+      "SELECT * FROM drugs WHERE status = 'active' AND stock_qty <= warning_qty"
+    )
+    for (const drug of drugs) {
+      this.syncDrugNotification(Number(drug.id))
+    }
+  }
+
+  private syncDrugNotification(drugId: number): void {
+    const drug = this.store.queryOne<DrugRow>('SELECT * FROM drugs WHERE id = ?', [drugId])
+    if (!drug || drug.status !== 'active') return
+    const now = nowIso()
+    if (Number(drug.stock_qty) > Number(drug.warning_qty)) {
+      this.store.run(
+        'UPDATE notifications SET read_at = ? WHERE drug_id = ? AND read_at IS NULL',
+        [now, drugId]
+      )
+      return
+    }
+    const unread = this.store.queryOne<{ count: number }>(
+      'SELECT COUNT(*) AS count FROM notifications WHERE drug_id = ? AND read_at IS NULL',
+      [drugId]
+    )
+    if (Number(unread?.count ?? 0) > 0) return
+    const latest = this.store.queryOne<{ created_at: string }>(
+      'SELECT created_at FROM notifications WHERE drug_id = ? ORDER BY created_at DESC, id DESC LIMIT 1',
+      [drugId]
+    )
+    const today = localDateOf(now)
+    if (latest && localDateOf(latest.created_at) === today) return
+    this.store.insert(
+      `INSERT INTO notifications (drug_id, drug_name, stock_qty, warning_qty, reason, created_at)
+       VALUES (?, ?, ?, ?, 'stock_low', ?)`,
+      [drugId, drug.name, Number(drug.stock_qty), Number(drug.warning_qty), now]
+    )
+  }
+
+  // ---------- 设置 ----------
+
+  getSettings(): Settings {
+    const rows = this.store.queryAll<SettingsRow>('SELECT key, value FROM settings')
+    const result: Settings = {
+      ...DEFAULT_SETTINGS,
+      viewModes: { ...DEFAULT_SETTINGS.viewModes }
+    }
+    for (const row of rows) {
+      try {
+        const value = JSON.parse(row.value)
+        if (row.key === 'theme') result.theme = value
+        if (row.key === 'lastDoctor') result.lastDoctor = value
+        if (row.key === 'viewModes') result.viewModes = { ...result.viewModes, ...value }
+        if (row.key === 'lastExportDir') result.lastExportDir = value
+      } catch {
+        // ignore malformed setting
+      }
+    }
+    return result
+  }
+
+  setSettings(patch: Partial<Settings>): Settings {
+    const parsed = settingsPatchSchema.parse(patch)
+    const now = nowIso()
+    const entries: [string, unknown][] = []
+    if (parsed.theme !== undefined) entries.push(['theme', parsed.theme])
+    if (parsed.lastDoctor !== undefined) entries.push(['lastDoctor', parsed.lastDoctor])
+    if (parsed.viewModes !== undefined) entries.push(['viewModes', parsed.viewModes])
+    if (parsed.lastExportDir !== undefined) entries.push(['lastExportDir', parsed.lastExportDir])
+    for (const [key, value] of entries) {
+      this.store.run(
+        `INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+        [key, JSON.stringify(value), now]
+      )
+    }
+    this.onDataChanged?.()
+    return this.getSettings()
+  }
+
+  // ---------- 打印/导出辅助 ----------
+
+  getPrescriptionsForPrint(ids: number[]): PrescriptionDetail[] {
+    return ids.map((id) => this.getPrescription(id))
+  }
+
+  formatMoney(cents: number): string {
+    return formatCents(cents)
+  }
+
+  formatDateTime(iso: string): string {
+    return formatDateTime(iso)
+  }
+}
