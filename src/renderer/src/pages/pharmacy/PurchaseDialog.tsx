@@ -4,7 +4,7 @@ import { centsToInput, formatCents, toCents } from '@shared/money'
 import { todayIso } from '@shared/date'
 import { Button, Dialog, Field, TextInput } from '../../components/Ui'
 import { useToast } from '../../context/ToastProvider'
-import { formatDrugStock } from '@shared/drugUnits'
+import { formatDrugStock, totalUnitFactor } from '@shared/drugUnits'
 
 interface PurchaseDialogProps {
   open: boolean
@@ -39,7 +39,13 @@ export function PurchaseDialog({ open, drug, onClose, onSuccess }: PurchaseDialo
     }
   })()
   const totalCents = qtyNumber * unitCostCents
-  const nextStock = drug.stockQty + qtyNumber
+  const factor = totalUnitFactor(drug.units)
+  const nextStockUnits = drug.stockUnits + qtyNumber * factor
+  const nextStockLabel = formatDrugStock({
+    ...drug,
+    stockQty: nextStockUnits / factor,
+    stockUnits: nextStockUnits
+  })
 
   const submit = async (): Promise<void> => {
     if (qtyNumber <= 0) {
@@ -54,7 +60,7 @@ export function PurchaseDialog({ open, drug, onClose, onSuccess }: PurchaseDialo
         qty: qtyNumber,
         unitCostCents
       })
-      showToast(`已进货 ${qtyNumber} ${drug.unit}，库存更新为 ${nextStock} ${drug.unit}`)
+      showToast(`已进货 ${qtyNumber} ${drug.unit}，库存更新为 ${nextStockLabel}`)
       onSuccess()
       onClose()
     } catch (cause) {
@@ -129,7 +135,7 @@ export function PurchaseDialog({ open, drug, onClose, onSuccess }: PurchaseDialo
             <div className="fee-row">
               <span className="fee-label">确认后库存</span>
               <span className="fee-value">
-                {formatDrugStock(drug)} → {nextStock} {drug.unit}
+                {formatDrugStock(drug)} → {nextStockLabel}
               </span>
             </div>
           </div>
