@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 2
+export const SCHEMA_VERSION = 3
 
 export const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS drugs (
@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS drugs (
   unit TEXT NOT NULL,
   inbound_date TEXT NOT NULL,
   stock_qty INTEGER NOT NULL DEFAULT 0,
+  stock_units INTEGER NOT NULL DEFAULT 0,
   warning_qty INTEGER NOT NULL DEFAULT 0,
   category TEXT NOT NULL DEFAULT '',
   supplier TEXT NOT NULL DEFAULT '',

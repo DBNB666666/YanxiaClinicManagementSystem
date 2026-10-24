@@ -27,6 +27,7 @@ export interface Drug {
   units: DrugUnit[]
   inboundDate: string
   stockQty: number
+  stockUnits: number
   warningQty: number
   category: string
   supplier: string

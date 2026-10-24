@@ -50,6 +50,7 @@ describe('药品细分单位', () => {
     expect(detail.items[0].amountCents).toBe(800)
     const updated = ctx.service.getDrug(created.id)
     expect(updated.stockQty).toBeCloseTo(5 - 1 / 7, 5)
+    expect(updated.stockUnits).toBe(680)
     expect(formatDrugStock(updated)).toBe('4盒 6支')
     expect(
       formatDrugStock({
@@ -68,5 +69,28 @@ describe('药品细分单位', () => {
         ]
       })
     ).toBe('10盒 · 20板 · 120片')
+  })
+
+  it('多级单位库存按最细单位整数统计', () => {
+    const created = ctx.service.createDrug({
+      name: '盐酸克林霉素分散片',
+      unit: '盒',
+      inboundDate: '2026-10-01',
+      stockQty: 10,
+      warningQty: 2,
+      category: '',
+      supplier: '',
+      indications: '',
+      costCents: 100,
+      priceCents: 200,
+      units: [
+        { unit: '板', factor: 2, priceCents: 20, costCents: 10 },
+        { unit: '片', factor: 6, priceCents: 2, costCents: 1 }
+      ]
+    })
+    const drug = ctx.service.getDrug(created.id)
+    expect(drug.stockUnits).toBe(120)
+    expect(formatDrugStock(drug)).toBe('10盒')
+    expect(formatDrugUnitTotals(drug)).toBe('10盒 · 20板 · 120片')
   })
 })

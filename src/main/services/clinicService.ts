@@ -27,6 +27,7 @@ import type {
 import { AppError } from '../../shared/result'
 import { formatCents, multiplyCents, sumCents } from '../../shared/money'
 import { getGroupLabel, getPeriodRange, nowIso, formatDateTime } from '../../shared/date'
+import { formatDrugStock, totalUnitFactor } from '../../shared/drugUnits'
 import {
   drugInputSchema,
   drugListQuerySchema,
@@ -46,6 +47,7 @@ interface DrugRow {
   unit: string
   inbound_date: string
   stock_qty: number
+  stock_units: number
   warning_qty: number
   category: string
   supplier: string
@@ -156,6 +158,7 @@ function mapDrug(row: DrugRow, units: DrugUnitRow[] = []): Drug {
     units: units.map(mapDrugUnit),
     inboundDate: row.inbound_date,
     stockQty: Number(row.stock_qty),
+    stockUnits: Number(row.stock_units ?? 0),
     warningQty: Number(row.warning_qty),
     category: row.category,
     supplier: row.supplier,
@@ -316,16 +319,19 @@ export class ClinicService {
   createDrug(input: DrugInput): { id: number } {
     const drug = drugInputSchema.parse(input)
     const now = nowIso()
+    const units = drug.units ?? []
+    const stockUnits = Math.round(drug.stockQty * totalUnitFactor(units))
     const id = this.store.insert(
       `INSERT INTO drugs
-        (name, unit, inbound_date, stock_qty, warning_qty, category, supplier, indications,
+        (name, unit, inbound_date, stock_qty, stock_units, warning_qty, category, supplier, indications,
          cost_cents, price_cents, status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`,
       [
         drug.name,
         drug.unit,
         drug.inboundDate,
         drug.stockQty,
+        stockUnits,
         drug.warningQty,
         drug.category,
         drug.supplier,
@@ -336,7 +342,7 @@ export class ClinicService {
         now
       ]
     )
-    if (drug.units) this.saveDrugUnits(id, drug.units)
+    this.saveDrugUnits(id, units)
     this.syncDrugNotification(id)
     this.onDataChanged?.()
     return { id }
@@ -347,15 +353,18 @@ export class ClinicService {
     const drug = drugInputSchema.parse(input)
     const existing = this.store.queryOne<DrugRow>('SELECT * FROM drugs WHERE id = ?', [safeId])
     if (!existing) throw new AppError('NOT_FOUND', '药品不存在')
+    const units = drug.units ?? this.getDrugUnits(safeId)
+    const stockUnits = Math.round(drug.stockQty * totalUnitFactor(units))
     this.store.run(
-      `UPDATE drugs SET name = ?, unit = ?, inbound_date = ?, stock_qty = ?, warning_qty = ?,
-         category = ?, supplier = ?, indications = ?, cost_cents = ?, price_cents = ?, updated_at = ?
-       WHERE id = ?`,
+      `UPDATE drugs SET name = ?, unit = ?, inbound_date = ?, stock_qty = ?, stock_units = ?,
+         warning_qty = ?, category = ?, supplier = ?, indications = ?, cost_cents = ?,
+         price_cents = ?, updated_at = ? WHERE id = ?`,
       [
         drug.name,
         drug.unit,
         drug.inboundDate,
         drug.stockQty,
+        stockUnits,
         drug.warningQty,
         drug.category,
         drug.supplier,
@@ -473,9 +482,11 @@ export class ClinicService {
           now
         ]
       )
+      const factor = totalUnitFactor(this.getDrugUnits(parsed.drugId))
+      const newStockUnits = Number(drug.stock_units ?? 0) + parsed.qty * factor
       this.store.run(
-        `UPDATE drugs SET stock_qty = stock_qty + ?, cost_cents = ?, updated_at = ? WHERE id = ?`,
-        [parsed.qty, parsed.unitCostCents, now, parsed.drugId]
+        `UPDATE drugs SET stock_qty = ?, stock_units = ?, cost_cents = ?, updated_at = ? WHERE id = ?`,
+        [newStockUnits / factor, newStockUnits, parsed.unitCostCents, now, parsed.drugId]
       )
       this.syncDrugNotification(parsed.drugId)
       const updated = this.store.queryOne<DrugRow>('SELECT * FROM drugs WHERE id = ?', [
@@ -591,10 +602,18 @@ export class ClinicService {
       const totalCents = drugAmountCents + parsed.injectionFeeCents
 
       const warnings = prepared
-        .filter((row) => Number(row.drug.stock_qty) < row.item.qty * row.baseFactor)
+        .filter((row) => {
+          const factor = totalUnitFactor(this.getDrugUnits(Number(row.drug.id)))
+          return Number(row.drug.stock_units ?? 0) < row.item.qty * row.baseFactor * factor
+        })
         .map(
           (row) =>
-            `${row.drug.name}：需要 ${row.item.qty}${row.unit}，当前 ${row.drug.stock_qty}${row.drug.unit}`
+            `${row.drug.name}：需要 ${row.item.qty}${row.unit}，当前 ${formatDrugStock({
+              unit: row.drug.unit,
+              stockQty: Number(row.drug.stock_qty),
+              stockUnits: Number(row.drug.stock_units ?? 0),
+              units: this.getDrugUnits(Number(row.drug.id)).map(mapDrugUnit)
+            })}`
         )
       if (warnings.length > 0 && !allowNegativeStock) {
         throw new AppError('STOCK_INSUFFICIENT', '库存不足', warnings)
@@ -642,11 +661,13 @@ export class ClinicService {
             row.index
           ]
         )
-        this.store.run('UPDATE drugs SET stock_qty = stock_qty - ?, updated_at = ? WHERE id = ?', [
-          row.item.qty * row.baseFactor,
-          now,
-          row.item.drugId
-        ])
+        const factor = totalUnitFactor(this.getDrugUnits(row.item.drugId))
+        const deducted = row.item.qty * row.baseFactor * factor
+        const newUnits = Math.round(Number(row.drug.stock_units ?? 0) - deducted)
+        this.store.run(
+          'UPDATE drugs SET stock_qty = ?, stock_units = ?, updated_at = ? WHERE id = ?',
+          [newUnits / factor, newUnits, now, row.item.drugId]
+        )
         this.syncDrugNotification(row.item.drugId)
       }
 
@@ -731,15 +752,17 @@ export class ClinicService {
       const stockDelta = new Map<number, number>()
       if (!medicationsUnchanged) {
         for (const old of oldItems) {
+          const factor = totalUnitFactor(this.getDrugUnits(Number(old.drug_id)))
           stockDelta.set(
             Number(old.drug_id),
             (stockDelta.get(Number(old.drug_id)) ?? 0) +
-              Number(old.qty) * Number(old.unit_factor ?? 1)
+              Number(old.qty) * Number(old.unit_factor ?? 1) * factor
           )
         }
         for (const row of prepared) {
           const drugId = row.old ? Number(row.old.drug_id) : row.item.drugId
-          stockDelta.set(drugId, (stockDelta.get(drugId) ?? 0) - row.item.qty * row.baseFactor)
+          const factor = totalUnitFactor(this.getDrugUnits(drugId))
+          stockDelta.set(drugId, (stockDelta.get(drugId) ?? 0) - row.item.qty * row.baseFactor * factor)
         }
       }
 
@@ -747,10 +770,15 @@ export class ClinicService {
       for (const [drugId, delta] of stockDelta.entries()) {
         const drug = this.store.queryOne<DrugRow>('SELECT * FROM drugs WHERE id = ?', [drugId])
         if (!drug) continue
-        const finalStock = Number(drug.stock_qty) + delta
+        const finalStock = Number(drug.stock_units ?? 0) + delta
         if (finalStock < 0) {
           warnings.push(
-            `${drug.name}：需要 ${Math.abs(delta)}${drug.unit}，当前 ${drug.stock_qty}${drug.unit}`
+            `${drug.name}：库存不足，当前 ${formatDrugStock({
+              unit: drug.unit,
+              stockQty: Number(drug.stock_qty),
+              stockUnits: Number(drug.stock_units ?? 0),
+              units: this.getDrugUnits(drugId).map(mapDrugUnit)
+            })}`
           )
         }
       }
@@ -827,11 +855,13 @@ export class ClinicService {
 
       for (const [drugId, delta] of stockDelta.entries()) {
         if (delta === 0) continue
-        this.store.run('UPDATE drugs SET stock_qty = stock_qty + ?, updated_at = ? WHERE id = ?', [
-          delta,
-          now,
-          drugId
-        ])
+        const factor = totalUnitFactor(this.getDrugUnits(drugId))
+        const current = this.store.queryOne<DrugRow>('SELECT * FROM drugs WHERE id = ?', [drugId])
+        const nextUnits = Math.round(Number(current?.stock_units ?? 0) + delta)
+        this.store.run(
+          'UPDATE drugs SET stock_qty = ?, stock_units = ?, updated_at = ? WHERE id = ?',
+          [nextUnits / factor, nextUnits, now, drugId]
+        )
         this.syncDrugNotification(drugId)
       }
 
@@ -854,11 +884,17 @@ export class ClinicService {
       )
       const now = nowIso()
       for (const item of items) {
-        this.store.run('UPDATE drugs SET stock_qty = stock_qty + ?, updated_at = ? WHERE id = ?', [
-          Number(item.qty) * Number(item.unit_factor ?? 1),
-          now,
-          Number(item.drug_id)
-        ])
+        const drugId = Number(item.drug_id)
+        const factor = totalUnitFactor(this.getDrugUnits(drugId))
+        const drug = this.store.queryOne<DrugRow>('SELECT * FROM drugs WHERE id = ?', [drugId])
+        const nextUnits = Math.round(
+          Number(drug?.stock_units ?? 0) +
+            Number(item.qty) * Number(item.unit_factor ?? 1) * factor
+        )
+        this.store.run(
+          'UPDATE drugs SET stock_qty = ?, stock_units = ?, updated_at = ? WHERE id = ?',
+          [nextUnits / factor, nextUnits, now, drugId]
+        )
       }
       this.store.run('DELETE FROM prescriptions WHERE id = ?', [safeId])
       for (const item of items) {

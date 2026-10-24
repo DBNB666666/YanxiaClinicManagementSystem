@@ -33,18 +33,24 @@ export function drugUnitChoices(drug: Pick<Drug, 'unit' | 'priceCents' | 'costCe
   return choices
 }
 
-export function formatDrugStock(drug: Pick<Drug, 'unit' | 'stockQty' | 'units'>): string {
+export function formatDrugStock(
+  drug: Pick<Drug, 'unit' | 'stockQty' | 'units'> & { stockUnits?: number }
+): string {
   const units = drug.units ?? []
-  const baseWhole = Math.floor(drug.stockQty)
+  const totalFactor = totalUnitFactor(units)
+  const smallest =
+    drug.stockUnits !== undefined
+      ? Math.round(drug.stockUnits)
+      : Math.round(drug.stockQty * totalFactor)
+  const baseWhole = Math.floor(smallest / totalFactor)
   if (!units.length) return `${drug.stockQty} ${drug.unit}`
-  const smallFactor = totalUnitFactor(units)
-  let remainder = Math.round((drug.stockQty - baseWhole) * smallFactor)
+  let remainder = smallest - baseWhole * totalFactor
   const parts = [`${baseWhole}${drug.unit}`]
   let cumulative = 1
   const counts: number[] = []
   for (const unit of units) {
     cumulative *= Number(unit.factor)
-    const unitSize = smallFactor / cumulative
+    const unitSize = totalFactor / cumulative
     const whole = Math.floor(remainder / unitSize)
     remainder -= whole * unitSize
     counts.push(whole)
@@ -56,11 +62,16 @@ export function formatDrugStock(drug: Pick<Drug, 'unit' | 'stockQty' | 'units'>)
   return parts.join(' ')
 }
 
-export function formatDrugUnitTotals(drug: Pick<Drug, 'unit' | 'stockQty' | 'units'>): string {
+export function formatDrugUnitTotals(
+  drug: Pick<Drug, 'unit' | 'stockQty' | 'units'> & { stockUnits?: number }
+): string {
   const units = drug.units ?? []
   if (!units.length) return `${drug.stockQty} ${drug.unit}`
   const totalFactor = totalUnitFactor(units)
-  const smallest = Math.round(drug.stockQty * totalFactor)
+  const smallest =
+    drug.stockUnits !== undefined
+      ? Math.round(drug.stockUnits)
+      : Math.round(drug.stockQty * totalFactor)
   const parts: string[] = []
   let cumulative = 1
   parts.push(`${Math.floor(smallest / totalFactor)}${drug.unit}`)
