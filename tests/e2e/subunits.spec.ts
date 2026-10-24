@@ -45,6 +45,14 @@ test('药品细分单位与按支开方', async ({ page, request }) => {
   await page.getByTestId('save-prescription').click()
   await page.waitForSelector('[data-testid="prescription-page"]')
 
-  const updated = await apiCall<{ stockQty: number }>(request, 'drugs', 'get', [drug!.id])
+  const updated = await apiCall<{ stockQty: number; stockUnits: number }>(request, 'drugs', 'get', [
+    drug!.id
+  ])
   expect(updated.stockQty).toBeCloseTo(5 - 1 / 7, 5)
+  expect(updated.stockUnits).toBe(34)
+
+  await openApp(page, `/#/pharmacy/${drug!.id}`, '[data-testid="drug-detail-page"]')
+  await expect(page.locator('.stock-number')).toContainText('4盒')
+  await expect(page.locator('.stock-number')).toContainText('6支')
+  await expect(page.locator('.stock-number')).not.toContainText('4.857')
 })

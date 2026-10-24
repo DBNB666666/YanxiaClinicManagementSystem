@@ -35,6 +35,7 @@ interface EditItem {
   unitCostCents: number
   amountCents: number
   stockQty: number
+  stockUnits: number
   warningQty: number
 }
 
@@ -88,6 +89,7 @@ function mapItem(item: PrescriptionItem, drugs: Drug[]): EditItem {
     unitCostCents: item.unitCostCents,
     amountCents: item.amountCents,
     stockQty: drug?.stockQty ?? 0,
+    stockUnits: drug?.stockUnits ?? 0,
     warningQty: drug?.warningQty ?? 0
   }
 }
@@ -257,8 +259,22 @@ export function PrescriptionEditPage(): React.JSX.Element {
   const stockWarnings = useMemo(
     () =>
       items
-        .filter((item) => item.qty > item.stockQty)
-        .map((item) => `${item.drugName}：需要 ${item.qty}${item.unit}，当前 ${item.stockQty}${item.unit}`),
+        .filter((item) => item.qty * item.baseFactor > item.stockQty)
+        .map(
+          (item) =>
+            `${item.drugName}：需要 ${item.qty}${item.unit}，当前 ${formatDrugStock({
+              unit: item.unitChoices[0]?.unit ?? item.unit,
+              stockQty: item.stockQty,
+              stockUnits: item.stockUnits,
+              units: item.unitChoices.slice(1).map((choice) => ({
+                id: 0,
+                unit: choice.unit,
+                factor: choice.factor,
+                priceCents: choice.priceCents,
+                costCents: choice.costCents
+              }))
+            })}`
+        ),
     [items]
   )
 
@@ -325,6 +341,7 @@ export function PrescriptionEditPage(): React.JSX.Element {
         unitCostCents: drug.costCents,
         amountCents: drug.priceCents,
         stockQty: drug.stockQty,
+        stockUnits: drug.stockUnits,
         warningQty: drug.warningQty
       }))
     setItems((current) => [...current, ...next])
@@ -638,6 +655,7 @@ export function PrescriptionEditPage(): React.JSX.Element {
                           {formatDrugStock({
                             unit: item.unitChoices[0]?.unit ?? item.unit,
                             stockQty: item.stockQty,
+                            stockUnits: item.stockUnits,
                             units: item.unitChoices.slice(1).map((choice) => ({
                               id: 0,
                               unit: choice.unit,
@@ -885,7 +903,7 @@ export function PrescriptionEditPage(): React.JSX.Element {
                   <span className="med-picker-main">
                     <span className="med-picker-name">{drug.name}</span>
                     <span className="med-picker-meta">
-                      {exists ? '已添加 · ' : ''}库存 {drug.stockQty} {drug.unit} · {drug.category || '未分类'}
+                      {exists ? '已添加 · ' : ''}库存 {formatDrugStock(drug)} · {drug.category || '未分类'}
                     </span>
                   </span>
                   <span className="med-picker-price">{formatCents(drug.priceCents)}</span>
