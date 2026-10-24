@@ -4,9 +4,18 @@ import { ArrowLeft } from 'lucide-react'
 import type { DrugInput, DrugUnitInput } from '@shared/types/models'
 import { centsToInput, formatCents, toCents } from '@shared/money'
 import { todayIso } from '@shared/date'
-import { Button, ConfirmDialog, Field, PageHeader, TextArea, TextInput } from '../../components/Ui'
+import {
+  Button,
+  ConfirmDialog,
+  Dialog,
+  Field,
+  PageHeader,
+  TextArea,
+  TextInput
+} from '../../components/Ui'
 import { Breadcrumbs } from '../../components/Breadcrumbs'
 import { useToast } from '../../context/ToastProvider'
+import { formatDrugStock } from '@shared/drugUnits'
 
 interface DrugForm {
   name: string
@@ -59,6 +68,9 @@ export function DrugEditPage(): React.JSX.Element {
   const backTarget = editId ? `/pharmacy/${editId}` : '/pharmacy'
   const [form, setForm] = useState<DrugForm>(emptyForm)
   const [subunits, setSubunits] = useState<SubunitForm[]>([])
+  const [stockOpen, setStockOpen] = useState(false)
+  const [stockBaseDraft, setStockBaseDraft] = useState('0')
+  const [stockLooseDraft, setStockLooseDraft] = useState<string[]>([])
   const [loading, setLoading] = useState(Boolean(editId))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -116,6 +128,61 @@ export function DrugEditPage(): React.JSX.Element {
   const priceCents = safeCents(form.price)
   const marginCents = priceCents - costCents
   const marginPercent = priceCents > 0 ? Math.round((marginCents / priceCents) * 100) : 0
+  const displayUnits = subunits.map((row) => ({
+    id: 0,
+    unit: row.unit || '单位',
+    factor: Math.max(0.0001, Number(row.factor) || 1),
+    priceCents: safeCents(row.price),
+    costCents: safeCents(row.cost)
+  }))
+  const totalFactor = displayUnits.reduce((total, unit) => total * unit.factor, 1)
+  const stockUnits = Math.round(Number(form.stockQty || '0') * totalFactor)
+  const stockLabel = formatDrugStock({
+    unit: form.unit || '单位',
+    stockQty: stockUnits / totalFactor,
+    stockUnits,
+    units: displayUnits
+  })
+
+  const openStockAdjust = (): void => {
+    let remainder = stockUnits
+    const base = Math.floor(remainder / totalFactor)
+    remainder -= base * totalFactor
+    const loose: string[] = []
+    let cumulative = 1
+    for (const unit of displayUnits) {
+      cumulative *= unit.factor
+      const unitSize = totalFactor / cumulative
+      const count = Math.floor(remainder / unitSize)
+      remainder -= count * unitSize
+      loose.push(String(count))
+    }
+    setStockBaseDraft(String(base))
+    setStockLooseDraft(loose)
+    setStockOpen(true)
+  }
+
+  const confirmStockAdjust = (): void => {
+    const base = Number(stockBaseDraft)
+    if (!Number.isInteger(base) || base < 0) {
+      showToast('整盒数量必须是非负整数', 'warning')
+      return
+    }
+    let nextUnits = base * totalFactor
+    let cumulative = 1
+    for (let index = 0; index < displayUnits.length; index += 1) {
+      const count = Number(stockLooseDraft[index] ?? 0)
+      if (!Number.isInteger(count) || count < 0) {
+        showToast('零头数量必须是非负整数', 'warning')
+        return
+      }
+      cumulative *= displayUnits[index].factor
+      nextUnits += count * (totalFactor / cumulative)
+    }
+    setForm((current) => ({ ...current, stockQty: String(nextUnits / totalFactor) }))
+    setStockOpen(false)
+    setDirty(true)
+  }
 
   const save = async (): Promise<void> => {
     if (!form.name.trim() || !form.unit.trim()) {
@@ -279,15 +346,20 @@ export function DrugEditPage(): React.JSX.Element {
             <h2 className="form-section-title">库存</h2>
             <div className="form-grid" style={{ marginTop: 16 }}>
               <div className="span-4">
-                <Field label="库存数量" required hint="修改库存视为盘点校正">
-                  <TextInput
-                    type="number"
-                    min={0}
-                    step={1}
-                    value={form.stockQty}
-                    data-testid="drug-stock"
-                    onChange={(event) => setField('stockQty', event.target.value)}
-                  />
+                <Field label="库存数量" hint="只读显示；需要修改请点盘点校正">
+                  <div className="stock-readonly-row">
+                    <span className="stock-readonly-value" data-testid="drug-stock-display">
+                      {stockLabel}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      data-testid="stock-adjust-open"
+                      onClick={openStockAdjust}
+                    >
+                      盘点校正
+                    </Button>
+                  </div>
                 </Field>
               </div>
               <div className="span-4">
@@ -487,6 +559,58 @@ export function DrugEditPage(): React.JSX.Element {
           <option key={unit} value={unit} />
         ))}
       </datalist>
+
+      <Dialog
+        open={stockOpen}
+        title="盘点校正"
+        onClose={() => setStockOpen(false)}
+        testId="stock-adjust-dialog"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setStockOpen(false)}>
+              取消
+            </Button>
+            <Button variant="primary" data-testid="stock-adjust-save" onClick={confirmStockAdjust}>
+              保存
+            </Button>
+          </>
+        }
+      >
+        <p className="muted" style={{ marginTop: 0 }}>
+          当前显示：{stockLabel}。请按整数填写整盒和各细分单位零头。
+        </p>
+        <Field label={`整盒数量（${form.unit || '单位'}）`}>
+          <TextInput
+            type="number"
+            min={0}
+            step={1}
+            value={stockBaseDraft}
+            data-testid="stock-base"
+            onChange={(event) => setStockBaseDraft(event.target.value)}
+          />
+        </Field>
+        {subunits.map((row, index) => (
+          <Field
+            key={index}
+            label={`${row.unit || '细分单位'}零头${
+              index === 0 ? `（不足1${form.unit || '盒'}）` : `（不足1${subunits[index - 1]?.unit || '单位'}）`
+            }`}
+          >
+            <TextInput
+              type="number"
+              min={0}
+              step={1}
+              value={stockLooseDraft[index] ?? '0'}
+              data-testid={`stock-loose-${index}`}
+              onChange={(event) =>
+                setStockLooseDraft((current) =>
+                  current.map((value, i) => (i === index ? event.target.value : value))
+                )
+              }
+            />
+          </Field>
+        ))}
+      </Dialog>
 
       <ConfirmDialog
         open={leaveOpen}

@@ -59,7 +59,9 @@ test('新增药品、进货与停用', async ({ page, request }) => {
 
   await page.getByTestId('drug-name').fill('维生素C片')
   await page.getByTestId('drug-unit').fill('瓶')
-  await page.getByTestId('drug-stock').fill('6')
+  await page.getByTestId('stock-adjust-open').click()
+  await page.getByTestId('stock-base').fill('6')
+  await page.getByTestId('stock-adjust-save').click()
   await page.getByTestId('drug-warning').fill('5')
   await page.getByTestId('drug-cost').fill('3.00')
   await page.getByTestId('drug-price').fill('6.00')
