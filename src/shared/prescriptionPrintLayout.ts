@@ -91,9 +91,6 @@ export function buildPrescriptionContentLines(prescription: PrescriptionDetail):
     const line = `${index + 1}. ${item.drugName}  ${item.qty}${item.unit}${usage ? `  ${usage}` : ''}`
     lines.push(...wrapByChars(line))
   })
-  if (prescription.rp.trim()) {
-    lines.push(...wrapByChars(`嘱托：${prescription.rp.trim()}`))
-  }
   return lines
 }
 

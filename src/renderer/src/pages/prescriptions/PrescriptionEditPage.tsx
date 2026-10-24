@@ -12,7 +12,6 @@ import {
   Field,
   IconButton,
   SearchInput,
-  TextArea,
   TextInput
 } from '../../components/Ui'
 import { useSettings } from '../../context/SettingsProvider'
@@ -40,7 +39,6 @@ interface FormState {
   age: string
   diagnosis: string
   issueDate: string
-  rp: string
   doctor: string
   injectionFee: string
 }
@@ -59,7 +57,6 @@ function emptyForm(lastDoctor: string): FormState {
     age: '',
     diagnosis: '',
     issueDate: todayIso(),
-    rp: '',
     doctor: lastDoctor,
     injectionFee: '0.00'
   }
@@ -129,7 +126,6 @@ export function PrescriptionEditPage(): React.JSX.Element {
             age: detail.age,
             diagnosis: detail.diagnosis,
             issueDate: detail.issueDate,
-            rp: detail.rp,
             doctor: detail.doctor,
             injectionFee: centsToInput(detail.injectionFeeCents)
           })
@@ -261,7 +257,6 @@ export function PrescriptionEditPage(): React.JSX.Element {
     age: form.age.trim(),
     diagnosis: form.diagnosis.trim(),
     issueDate: form.issueDate,
-    rp: form.rp.trim(),
     doctor: form.doctor.trim(),
     items: items.map((item) => ({
       id: item.id,
@@ -310,12 +305,8 @@ export function PrescriptionEditPage(): React.JSX.Element {
 
   const handleSave = (print = false): void => {
     const input = buildInput()
-    if (!input.patientName || !input.age || !input.diagnosis || !input.rp || !input.doctor) {
-      showToast('请把患者信息、Rp 和医师填写完整', 'warning')
-      return
-    }
-    if (input.rp.length > 500) {
-      showToast('Rp 最多 500 字', 'warning')
+    if (!input.patientName || !input.age || !input.diagnosis || !input.doctor) {
+      showToast('请把患者信息和医师填写完整', 'warning')
       return
     }
     if (input.items.length === 0) {
@@ -447,25 +438,6 @@ export function PrescriptionEditPage(): React.JSX.Element {
                   />
                 </Field>
               </div>
-            </div>
-          </section>
-
-          <section className="form-section">
-            <div className="form-section-head">
-              <h2 className="form-section-title">Rp 处方正文</h2>
-              <span className={`rp-count ${form.rp.length > 450 ? 'warning' : ''}`.trim()} style={{ marginLeft: 'auto' }}>
-                {form.rp.length} / 500
-              </span>
-            </div>
-            <div className="rp-box">
-              <TextArea
-                rows={6}
-                maxLength={500}
-                value={form.rp}
-                placeholder="填写处方正文，最多 500 字"
-                data-testid="rx-rp"
-                onChange={(event) => setField('rp', event.target.value)}
-              />
             </div>
           </section>
 

@@ -3,6 +3,7 @@ import type { PrescriptionDetail } from '../../src/shared/types/models'
 import {
   PRINT_CONTENT_LAYOUT,
   PRINT_CONTENT_MAX_LINES,
+  buildPrescriptionContentLines,
   buildPrescriptionFooterFields,
   buildPrescriptionHeaderFields
 } from '../../src/shared/prescriptionPrintLayout'
@@ -31,6 +32,12 @@ describe('prescription print layout', () => {
     expect(age).toBeDefined()
     expect(age!.x).toBeGreaterThanOrEqual(0.7)
     expect(age!.y).toBeGreaterThanOrEqual(0.128)
+  })
+
+  it('打印内容不再输出 Rp 正文/嘱托', () => {
+    const lines = buildPrescriptionContentLines({ ...detail, rp: '注意休息，低盐饮食。' })
+    expect(lines.join('')).not.toContain('嘱托')
+    expect(lines.join('')).not.toContain('注意休息')
   })
 
   it('Rp 用药内容整体位于 Rp 标题下方且不压到底部费用区', () => {

@@ -140,13 +140,6 @@ export function PrescriptionDetailPage(): React.JSX.Element {
           </section>
 
           <section className="detail-panel">
-            <h2 className="detail-panel-title">Rp 处方正文</h2>
-            <div className="rp-detail" data-testid="detail-rp">
-              {prescription.rp || '—'}
-            </div>
-          </section>
-
-          <section className="detail-panel">
             <h2 className="detail-panel-title">用药明细</h2>
             {prescription.items.length === 0 ? (
               <div className="med-empty">没有用药记录</div>

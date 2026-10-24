@@ -24,7 +24,7 @@ test('点击处方卡片进入详情页', async ({ page }) => {
   await page.getByTestId('rx-card-1').click()
   await page.waitForSelector('[data-testid="prescription-detail-page"]')
   await expect(page.getByTestId('detail-patient-name')).toHaveText('张秀兰')
-  await expect(page.getByTestId('detail-rp')).toContainText('注意休息，低盐饮食。')
+  await expect(page.getByText('Rp 处方正文')).toHaveCount(0)
   await expect(page.getByTestId('detail-medication-1')).toContainText('阿莫西林胶囊')
   await expect(page.getByTestId('detail-total')).toHaveText('¥68.00')
   await expect(page.getByTestId('detail-edit')).toBeVisible()
@@ -90,7 +90,7 @@ test('新建处方并从药房添加用药', async ({ page, request }) => {
   await page.getByTestId('rx-age').fill('30')
   await page.getByTestId('rx-diagnosis').fill('上呼吸道感染')
   await page.getByTestId('rx-doctor').fill('李医生')
-  await page.getByTestId('rx-rp').fill('多喝水，注意休息。')
+  await expect(page.getByTestId('rx-rp')).toHaveCount(0)
 
   await page.getByTestId('add-medication').click()
   await page.getByTestId('drug-picker-search').fill('阿莫')
@@ -119,7 +119,6 @@ test('库存不足时确认后以负库存保存', async ({ page, request }) => 
   await page.getByTestId('rx-age').fill('40')
   await page.getByTestId('rx-diagnosis').fill('脱水')
   await page.getByTestId('rx-doctor').fill('王医生')
-  await page.getByTestId('rx-rp').fill('补液。')
 
   await page.getByTestId('add-medication').click()
   await page.getByTestId('drug-picker-search').fill('生理盐水')
@@ -154,4 +153,5 @@ test('打印预览展示处方内容', async ({ page }) => {
   await expect(frame.getByText('张秀兰').first()).toBeVisible()
   await expect(frame.getByText('燕霞诊所').first()).toBeVisible()
   await expect(frame.getByText('48.00').first()).toBeVisible()
+  await expect(frame.getByText('嘱托')).toHaveCount(0)
 })

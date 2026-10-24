@@ -50,7 +50,7 @@ export const prescriptionInputSchema = z.object({
   age: z.string().trim().min(1, '请填写年龄').max(10, '年龄最多 10 个字符'),
   diagnosis: z.string().trim().min(1, '请填写临床诊断').max(100, '临床诊断最多 100 字'),
   issueDate: pastOrTodaySchema,
-  rp: z.string().trim().min(1, '请填写 Rp 处方正文').max(500, 'Rp 最多 500 字'),
+  rp: z.string().trim().max(500, 'Rp 最多 500 字').optional().default(''),
   doctor: z.string().trim().min(1, '请填写医师').max(20, '医师最多 20 字'),
   items: z.array(prescriptionItemInputSchema).min(1, '请至少添加一种药品'),
   injectionFeeCents: z.number().int('注射费必须是整数分').min(0, '注射费不能小于 0'),

@@ -110,7 +110,7 @@ export interface PrescriptionInput {
   age: string
   diagnosis: string
   issueDate: string
-  rp: string
+  rp?: string
   doctor: string
   items: PrescriptionItemInput[]
   injectionFeeCents: number
