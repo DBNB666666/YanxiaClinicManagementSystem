@@ -600,9 +600,9 @@ export function PrescriptionEditPage(): React.JSX.Element {
               <table className="med-table" data-testid="medication-table">
                 <thead>
                   <tr>
-                    <th style={{ width: '30%' }}>药品</th>
-                    <th style={{ width: '15%' }}>数量</th>
-                    <th style={{ width: '41%' }}>用法</th>
+                    <th style={{ width: '28%' }}>药品</th>
+                    <th style={{ width: '24%' }}>数量</th>
+                    <th style={{ width: '34%' }}>用法</th>
                     <th style={{ width: '12%' }} className="right">
                       金额
                     </th>
@@ -650,18 +650,27 @@ export function PrescriptionEditPage(): React.JSX.Element {
                               })
                             }
                           />
-                          <select
-                            className="select"
-                            value={item.unit}
-                            data-testid={`med-unit-${item.drugId}`}
-                            onChange={(event) => updateItem(item.key, { unit: event.target.value })}
+                          <span
+                            className="med-unit"
+                            data-testid={`med-unit-label-${item.drugId}`}
                           >
-                            {item.unitChoices.map((choice) => (
-                              <option key={choice.unit} value={choice.unit}>
-                                {choice.unit}
-                              </option>
-                            ))}
-                          </select>
+                            {item.unit}
+                          </span>
+                          {item.unitChoices.length > 1 ? (
+                            <select
+                              className="select med-unit-select"
+                              value={item.unit}
+                              aria-label="选择用药单位"
+                              data-testid={`med-unit-${item.drugId}`}
+                              onChange={(event) => updateItem(item.key, { unit: event.target.value })}
+                            >
+                              {item.unitChoices.map((choice) => (
+                                <option key={choice.unit} value={choice.unit}>
+                                  {choice.unit}
+                                </option>
+                              ))}
+                            </select>
+                          ) : null}
                         </div>
                       </td>
                       <td>

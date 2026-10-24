@@ -472,6 +472,7 @@
 
 .med-qty {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 4px;
 }
@@ -481,6 +482,13 @@
   height: 32px;
   padding: 0 6px;
   text-align: center;
+}
+
+.med-qty .med-unit-select {
+  width: 76px;
+  min-width: 76px;
+  height: 32px;
+  padding-left: 6px;
 }
 
 .med-unit {
