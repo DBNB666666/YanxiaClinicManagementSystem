@@ -93,9 +93,9 @@ export function buildPrescriptionSignatureField(
 
 export function buildPrescriptionContentLines(prescription: PrescriptionDetail): string[] {
   const lines: string[] = []
-  prescription.items.forEach((item) => {
-    const nameLine = `    ${item.drugName}    ${item.qty}${item.unit}`
-    const usageLine = `        用法：${mergeUsage(item.usage, item.frequency) || '—'}`
+  prescription.items.forEach((item, index) => {
+    const nameLine = `${index + 1}、${item.drugName}  ${item.qty}${item.unit}`
+    const usageLine = `    用法：${mergeUsage(item.usage, item.frequency) || '—'}`
     lines.push(...wrapByChars(nameLine), ...wrapByChars(usageLine))
   })
   return lines
