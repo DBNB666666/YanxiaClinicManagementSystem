@@ -3,6 +3,8 @@ import type {
   DrugDetail,
   DrugInput,
   DrugListQuery,
+  DrugUnit,
+  DrugUnitInput,
   FinanceDetails,
   FinanceDetailsQuery,
   FinanceQuery,
@@ -56,6 +58,16 @@ interface DrugRow {
   usage_count: number
 }
 
+interface DrugUnitRow {
+  id: number
+  drug_id: number
+  unit: string
+  factor: number
+  price_cents: number
+  cost_cents: number
+  sort_order: number
+}
+
 interface PurchaseRow {
   id: number
   drug_id: number
@@ -90,6 +102,7 @@ interface PrescriptionItemRow {
   drug_id: number
   drug_name: string
   unit: string
+  unit_factor: number
   qty: number
   usage: string
   frequency: string
@@ -122,11 +135,22 @@ const DEFAULT_SETTINGS: Settings = {
   signatureImage: ''
 }
 
-function mapDrug(row: DrugRow): Drug {
+function mapDrugUnit(row: DrugUnitRow): DrugUnit {
+  return {
+    id: Number(row.id),
+    unit: row.unit,
+    factor: Number(row.factor),
+    priceCents: Number(row.price_cents),
+    costCents: Number(row.cost_cents)
+  }
+}
+
+function mapDrug(row: DrugRow, units: DrugUnitRow[] = []): Drug {
   return {
     id: Number(row.id),
     name: row.name,
     unit: row.unit,
+    units: units.map(mapDrugUnit),
     inboundDate: row.inbound_date,
     stockQty: Number(row.stock_qty),
     warningQty: Number(row.warning_qty),
@@ -161,6 +185,7 @@ function mapItem(row: PrescriptionItemRow): PrescriptionItem {
     drugId: Number(row.drug_id),
     drugName: row.drug_name,
     unit: row.unit,
+    unitFactor: Number(row.unit_factor ?? 1),
     qty: Number(row.qty),
     usage: row.usage,
     frequency: row.frequency,
@@ -257,7 +282,10 @@ export class ClinicService {
        LIMIT ? OFFSET ?`,
       [...params, pageSize, (page - 1) * pageSize]
     )
-    return { items: rows.map(mapDrug), total: Number(totalRow?.total ?? 0) }
+    return {
+      items: rows.map((row) => mapDrug(row, this.getDrugUnits(Number(row.id)))),
+      total: Number(totalRow?.total ?? 0)
+    }
   }
 
   getDrug(id: number): DrugDetail {
@@ -276,7 +304,10 @@ export class ClinicService {
       'SELECT * FROM purchases WHERE drug_id = ? ORDER BY purchase_date DESC, id DESC',
       [safeId]
     )
-    return { ...mapDrug(row), purchases: purchases.map(mapPurchase) }
+    return {
+      ...mapDrug(row, this.getDrugUnits(safeId)),
+      purchases: purchases.map(mapPurchase)
+    }
   }
 
   createDrug(input: DrugInput): { id: number } {
@@ -302,6 +333,7 @@ export class ClinicService {
         now
       ]
     )
+    if (drug.units) this.saveDrugUnits(id, drug.units)
     this.syncDrugNotification(id)
     this.onDataChanged?.()
     return { id }
@@ -331,9 +363,56 @@ export class ClinicService {
         safeId
       ]
     )
+    if (drug.units) this.saveDrugUnits(safeId, drug.units)
     this.syncDrugNotification(safeId)
     this.onDataChanged?.()
     return { id: safeId }
+  }
+
+  private getDrugUnits(drugId: number): DrugUnitRow[] {
+    return this.store.queryAll<DrugUnitRow>(
+      'SELECT * FROM drug_units WHERE drug_id = ? ORDER BY sort_order, id',
+      [drugId]
+    )
+  }
+
+  private saveDrugUnits(drugId: number, units: DrugUnitInput[]): void {
+    this.store.run('DELETE FROM drug_units WHERE drug_id = ?', [drugId])
+    units.forEach((unit, index) => {
+      this.store.insert(
+        `INSERT INTO drug_units (drug_id, unit, factor, price_cents, cost_cents, sort_order)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [drugId, unit.unit, unit.factor, unit.priceCents, unit.costCents, index]
+      )
+    })
+  }
+
+  private resolveDrugUnit(
+    drug: DrugRow,
+    units: DrugUnitRow[],
+    requested?: string
+  ): { unit: string; priceCents: number; costCents: number; baseFactor: number } {
+    if (!requested || requested === drug.unit) {
+      return {
+        unit: drug.unit,
+        priceCents: Number(drug.price_cents),
+        costCents: Number(drug.cost_cents),
+        baseFactor: 1
+      }
+    }
+    let unitsPerBase = 1
+    for (const unit of units) {
+      unitsPerBase *= Number(unit.factor)
+      if (unit.unit === requested) {
+        return {
+          unit: unit.unit,
+          priceCents: Number(unit.price_cents),
+          costCents: Number(unit.cost_cents),
+          baseFactor: 1 / unitsPerBase
+        }
+      }
+    }
+    throw new AppError('VALIDATION_ERROR', `药品没有该细分单位：${requested}`)
   }
 
   setDrugStatus(id: number, status: 'active' | 'stopped'): { id: number } {
@@ -487,15 +566,17 @@ export class ClinicService {
         if (drug.status !== 'active') {
           throw new AppError('VALIDATION_ERROR', `药品已停用：${drug.name}`)
         }
-        const amountCents = multiplyCents(item.qty, Number(drug.price_cents))
+        const resolved = this.resolveDrugUnit(drug, this.getDrugUnits(Number(drug.id)), item.unit)
+        const amountCents = multiplyCents(item.qty, resolved.priceCents)
         return {
           item,
           index,
           drug,
+          ...resolved,
           amountCents,
-          costCents: multiplyCents(item.qty, Number(drug.cost_cents)),
-          unitPriceCents: Number(drug.price_cents),
-          unitCostCents: Number(drug.cost_cents)
+          costCents: multiplyCents(item.qty, resolved.costCents),
+          unitPriceCents: resolved.priceCents,
+          unitCostCents: resolved.costCents
         }
       })
 
@@ -507,10 +588,10 @@ export class ClinicService {
       const totalCents = drugAmountCents + parsed.injectionFeeCents
 
       const warnings = prepared
-        .filter((row) => Number(row.drug.stock_qty) < row.item.qty)
+        .filter((row) => Number(row.drug.stock_qty) < row.item.qty * row.baseFactor)
         .map(
           (row) =>
-            `${row.drug.name}：需要 ${row.item.qty}${row.drug.unit}，当前 ${row.drug.stock_qty}${row.drug.unit}`
+            `${row.drug.name}：需要 ${row.item.qty}${row.unit}，当前 ${row.drug.stock_qty}${row.drug.unit}`
         )
       if (warnings.length > 0 && !allowNegativeStock) {
         throw new AppError('STOCK_INSUFFICIENT', '库存不足', warnings)
@@ -540,14 +621,15 @@ export class ClinicService {
       for (const row of prepared) {
         this.store.insert(
           `INSERT INTO prescription_items
-            (prescription_id, drug_id, drug_name, unit, qty, usage, frequency,
+            (prescription_id, drug_id, drug_name, unit, unit_factor, qty, usage, frequency,
              unit_price_cents, unit_cost_cents, amount_cents, sort_order)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             prescriptionId,
             row.item.drugId,
             row.drug.name,
-            row.drug.unit,
+            row.unit,
+            row.baseFactor,
             row.item.qty,
             row.item.usage,
             row.item.frequency,
@@ -558,7 +640,7 @@ export class ClinicService {
           ]
         )
         this.store.run('UPDATE drugs SET stock_qty = stock_qty - ?, updated_at = ? WHERE id = ?', [
-          row.item.qty,
+          row.item.qty * row.baseFactor,
           now,
           row.item.drugId
         ])
@@ -600,6 +682,7 @@ export class ClinicService {
             old,
             drugName: old.drug_name,
             unit: old.unit,
+            baseFactor: Number(old.unit_factor ?? 1),
             unitPriceCents: Number(old.unit_price_cents),
             unitCostCents: Number(old.unit_cost_cents),
             amountCents: multiplyCents(item.qty, Number(old.unit_price_cents))
@@ -610,15 +693,16 @@ export class ClinicService {
         if (drug.status !== 'active') {
           throw new AppError('VALIDATION_ERROR', `药品已停用：${drug.name}`)
         }
+        const resolved = this.resolveDrugUnit(drug, this.getDrugUnits(Number(drug.id)), item.unit)
         return {
           item,
           index,
           old: null,
           drugName: drug.name,
-          unit: drug.unit,
-          unitPriceCents: Number(drug.price_cents),
-          unitCostCents: Number(drug.cost_cents),
-          amountCents: multiplyCents(item.qty, Number(drug.price_cents))
+          ...resolved,
+          unitPriceCents: resolved.priceCents,
+          unitCostCents: resolved.costCents,
+          amountCents: multiplyCents(item.qty, resolved.priceCents)
         }
       })
 
@@ -631,11 +715,14 @@ export class ClinicService {
 
       const stockDelta = new Map<number, number>()
       for (const old of oldItems) {
-        stockDelta.set(Number(old.drug_id), (stockDelta.get(Number(old.drug_id)) ?? 0) + Number(old.qty))
+        stockDelta.set(
+          Number(old.drug_id),
+          (stockDelta.get(Number(old.drug_id)) ?? 0) + Number(old.qty) * Number(old.unit_factor ?? 1)
+        )
       }
       for (const row of prepared) {
         const drugId = row.old ? Number(row.old.drug_id) : row.item.drugId
-        stockDelta.set(drugId, (stockDelta.get(drugId) ?? 0) - row.item.qty)
+        stockDelta.set(drugId, (stockDelta.get(drugId) ?? 0) - row.item.qty * row.baseFactor)
       }
 
       const warnings: string[] = []
@@ -699,14 +786,15 @@ export class ClinicService {
         } else {
           this.store.insert(
             `INSERT INTO prescription_items
-              (prescription_id, drug_id, drug_name, unit, qty, usage, frequency,
+              (prescription_id, drug_id, drug_name, unit, unit_factor, qty, usage, frequency,
                unit_price_cents, unit_cost_cents, amount_cents, sort_order)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               safeId,
               row.item.drugId,
               row.drugName,
               row.unit,
+              row.baseFactor,
               row.item.qty,
               row.item.usage,
               row.item.frequency,
@@ -749,7 +837,7 @@ export class ClinicService {
       const now = nowIso()
       for (const item of items) {
         this.store.run('UPDATE drugs SET stock_qty = stock_qty + ?, updated_at = ? WHERE id = ?', [
-          Number(item.qty),
+          Number(item.qty) * Number(item.unit_factor ?? 1),
           now,
           Number(item.drug_id)
         ])

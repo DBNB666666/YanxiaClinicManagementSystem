@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
-import type { DrugInput } from '@shared/types/models'
+import type { DrugInput, DrugUnitInput } from '@shared/types/models'
 import { centsToInput, formatCents, toCents } from '@shared/money'
 import { todayIso } from '@shared/date'
 import { Button, ConfirmDialog, Field, PageHeader, TextArea, TextInput } from '../../components/Ui'
@@ -18,6 +18,13 @@ interface DrugForm {
   indications: string
   cost: string
   price: string
+}
+
+interface SubunitForm {
+  unit: string
+  factor: string
+  price: string
+  cost: string
 }
 
 function emptyForm(): DrugForm {
@@ -49,6 +56,7 @@ export function DrugEditPage(): React.JSX.Element {
   const { showToast } = useToast()
   const editId = id ? Number(id) : null
   const [form, setForm] = useState<DrugForm>(emptyForm)
+  const [subunits, setSubunits] = useState<SubunitForm[]>([])
   const [loading, setLoading] = useState(Boolean(editId))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -77,6 +85,14 @@ export function DrugEditPage(): React.JSX.Element {
           cost: centsToInput(drug.costCents),
           price: centsToInput(drug.priceCents)
         })
+        setSubunits(
+          (drug.units ?? []).map((unit) => ({
+            unit: unit.unit,
+            factor: String(unit.factor),
+            price: centsToInput(unit.priceCents),
+            cost: centsToInput(unit.costCents)
+          }))
+        )
       })
       .catch((cause: Error) => {
         if (!cancelled) setError(cause.message)
@@ -106,13 +122,31 @@ export function DrugEditPage(): React.JSX.Element {
     }
     const stockQty = Number(form.stockQty)
     const warningQty = Number(form.warningQty)
-    if (!Number.isInteger(stockQty) || stockQty < 0) {
-      showToast('库存数量必须是非负整数', 'warning')
+    if (!Number.isFinite(stockQty) || stockQty < 0) {
+      showToast('库存数量必须是非负数', 'warning')
       return
     }
-    if (!Number.isInteger(warningQty) || warningQty < 0) {
-      showToast('预警库存必须是非负整数', 'warning')
+    if (!Number.isFinite(warningQty) || warningQty < 0) {
+      showToast('预警库存必须是非负数', 'warning')
       return
+    }
+    const units: DrugUnitInput[] = []
+    for (const row of subunits) {
+      if (!row.unit.trim()) {
+        showToast('请填写细分单位名称', 'warning')
+        return
+      }
+      const factor = Number(row.factor)
+      if (!Number.isFinite(factor) || factor <= 0) {
+        showToast('细分换算比例必须大于 0', 'warning')
+        return
+      }
+      units.push({
+        unit: row.unit.trim(),
+        factor,
+        priceCents: safeCents(row.price),
+        costCents: safeCents(row.cost)
+      })
     }
     setSaving(true)
     setError(null)
@@ -126,7 +160,8 @@ export function DrugEditPage(): React.JSX.Element {
       supplier: form.supplier.trim(),
       indications: form.indications.trim(),
       costCents,
-      priceCents
+      priceCents,
+      units
     }
     try {
       if (editId) {
@@ -255,6 +290,119 @@ export function DrugEditPage(): React.JSX.Element {
                 </Field>
               </div>
             </div>
+          </section>
+
+          <section className="form-section" style={{ marginTop: 16 }}>
+            <h2 className="form-section-title">细分单位（选填）</h2>
+            <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>
+              例如：1 盒 = 7 支，1 支 = 20 mg。每一级单独设置售价和成本；库存按最细单位扣减。
+            </p>
+            {subunits.length > 0 ? (
+              <div className="table-wrap" style={{ marginTop: 12 }}>
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>细分单位</th>
+                      <th>每 1 上级单位包含</th>
+                      <th>售价（元）</th>
+                      <th>成本（元）</th>
+                      <th />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {subunits.map((row, index) => (
+                      <tr key={index}>
+                        <td>
+                          <TextInput
+                            value={row.unit}
+                            maxLength={8}
+                            placeholder="如支、片、mg"
+                            data-testid={`drug-subunit-unit-${index}`}
+                            onChange={(event) =>
+                              setSubunits((current) =>
+                                current.map((entry, i) =>
+                                  i === index ? { ...entry, unit: event.target.value } : entry
+                                )
+                              )
+                            }
+                          />
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <TextInput
+                              type="number"
+                              min={0.0001}
+                              step="any"
+                              value={row.factor}
+                              data-testid={`drug-subunit-factor-${index}`}
+                              onChange={(event) =>
+                                setSubunits((current) =>
+                                  current.map((entry, i) =>
+                                    i === index ? { ...entry, factor: event.target.value } : entry
+                                  )
+                                )
+                              }
+                            />
+                            <span>{row.unit || '单位'} / {index === 0 ? form.unit : subunits[index - 1]?.unit}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <TextInput
+                            value={row.price}
+                            inputMode="decimal"
+                            data-testid={`drug-subunit-price-${index}`}
+                            onChange={(event) =>
+                              setSubunits((current) =>
+                                current.map((entry, i) =>
+                                  i === index ? { ...entry, price: event.target.value } : entry
+                                )
+                              )
+                            }
+                          />
+                        </td>
+                        <td>
+                          <TextInput
+                            value={row.cost}
+                            inputMode="decimal"
+                            data-testid={`drug-subunit-cost-${index}`}
+                            onChange={(event) =>
+                              setSubunits((current) =>
+                                current.map((entry, i) =>
+                                  i === index ? { ...entry, cost: event.target.value } : entry
+                                )
+                              )
+                            }
+                          />
+                        </td>
+                        <td>
+                          <Button
+                            size="xs"
+                            variant="text-danger"
+                            onClick={() => setSubunits((current) => current.filter((_, i) => i !== index))}
+                          >
+                            删除
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+            <Button
+              variant="secondary"
+              size="sm"
+              style={{ marginTop: 10 }}
+              data-testid="add-drug-subunit"
+              onClick={() =>
+                setSubunits((current) => [
+                  ...current,
+                  { unit: '', factor: '1', price: '0.00', cost: '0.00' }
+                ])
+              }
+            >
+              添加细分单位
+            </Button>
           </section>
 
           <section className="form-section" style={{ marginTop: 16 }}>

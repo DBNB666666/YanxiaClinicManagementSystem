@@ -4,6 +4,7 @@ import { centsToInput, formatCents, toCents } from '@shared/money'
 import { todayIso } from '@shared/date'
 import { Button, Dialog, Field, TextInput } from '../../components/Ui'
 import { useToast } from '../../context/ToastProvider'
+import { formatDrugStock } from '@shared/drugUnits'
 
 interface PurchaseDialogProps {
   open: boolean
@@ -128,7 +129,7 @@ export function PurchaseDialog({ open, drug, onClose, onSuccess }: PurchaseDialo
             <div className="fee-row">
               <span className="fee-label">确认后库存</span>
               <span className="fee-value">
-                {drug.stockQty} {drug.unit} → {nextStock} {drug.unit}
+                {formatDrugStock(drug)} → {nextStock} {drug.unit}
               </span>
             </div>
           </div>

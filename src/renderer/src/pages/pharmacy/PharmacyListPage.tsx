@@ -18,6 +18,7 @@ import {
 import { useAsync } from '../../hooks/useAsync'
 import { useSettings } from '../../context/SettingsProvider'
 import { useToast } from '../../context/ToastProvider'
+import { formatDrugStock } from '@shared/drugUnits'
 
 export function PharmacyListPage(): React.JSX.Element {
   const navigate = useNavigate()
@@ -205,7 +206,7 @@ export function PharmacyListPage(): React.JSX.Element {
                 </div>
                 <div className="pharmacy-sub">入库：{drug.inboundDate}</div>
                 <div className={`pharmacy-stock ${low ? 'low' : ''}`.trim()}>
-                  {drug.stockQty} {drug.unit}
+                  {formatDrugStock(drug)}
                 </div>
                 <div className="pharmacy-meta">
                   <span>分类：{drug.category || '未分类'}</span>
@@ -267,7 +268,7 @@ export function PharmacyListPage(): React.JSX.Element {
                     </td>
                     <td>{drug.inboundDate}</td>
                     <td className={`num ${low ? 'warning-text' : ''}`.trim()}>
-                      {drug.stockQty} {drug.unit}
+                      {formatDrugStock(drug)}
                     </td>
                     <td>{drug.category || '未分类'}</td>
                     <td className="actions">

@@ -1,0 +1,55 @@
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { formatDrugStock } from '../../src/shared/drugUnits'
+import { createTestContext, type TestContext } from '../helpers/testStore'
+
+let ctx: TestContext
+
+beforeEach(async () => {
+  ctx = await createTestContext()
+})
+
+afterEach(() => {
+  ctx.cleanup()
+})
+
+describe('药品细分单位', () => {
+  it('保存多级单位并按所选单位独立计价、扣基础库存', () => {
+    const created = ctx.service.createDrug({
+      name: '注射用阿莫西林',
+      unit: '盒',
+      inboundDate: '2026-10-01',
+      stockQty: 5,
+      warningQty: 2,
+      category: '抗生素',
+      supplier: '华康医药',
+      indications: '',
+      costCents: 1000,
+      priceCents: 5000,
+      units: [
+        { unit: '支', factor: 7, priceCents: 800, costCents: 200 },
+        { unit: 'mg', factor: 20, priceCents: 50, costCents: 15 }
+      ]
+    })
+    const drug = ctx.service.getDrug(created.id)
+    expect(drug.units.map((unit) => unit.unit)).toEqual(['支', 'mg'])
+    expect(drug.units[0].priceCents).toBe(800)
+
+    const result = ctx.service.createPrescription({
+      patientName: '张三',
+      gender: '男',
+      age: '32',
+      diagnosis: '感染',
+      issueDate: '2026-10-24',
+      doctor: '李医生',
+      items: [{ drugId: created.id, unit: '支', qty: 1, usage: '静滴', frequency: '' }],
+      injectionFeeCents: 0
+    })
+    const detail = ctx.service.getPrescription(result.id)
+    expect(detail.items[0].unit).toBe('支')
+    expect(detail.items[0].unitFactor).toBeCloseTo(1 / 7, 5)
+    expect(detail.items[0].amountCents).toBe(800)
+    const updated = ctx.service.getDrug(created.id)
+    expect(updated.stockQty).toBeCloseTo(5 - 1 / 7, 5)
+    expect(formatDrugStock(updated)).toBe('4盒 6支')
+  })
+})

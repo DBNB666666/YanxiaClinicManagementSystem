@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 1
+export const SCHEMA_VERSION = 2
 
 export const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS drugs (
@@ -16,6 +16,16 @@ CREATE TABLE IF NOT EXISTS drugs (
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'stopped')),
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS drug_units (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  drug_id INTEGER NOT NULL REFERENCES drugs(id) ON DELETE CASCADE,
+  unit TEXT NOT NULL,
+  factor REAL NOT NULL CHECK (factor > 0),
+  price_cents INTEGER NOT NULL CHECK (price_cents >= 0),
+  cost_cents INTEGER NOT NULL CHECK (cost_cents >= 0),
+  sort_order INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS purchases (
@@ -50,6 +60,7 @@ CREATE TABLE IF NOT EXISTS prescription_items (
   drug_id INTEGER NOT NULL REFERENCES drugs(id) ON DELETE RESTRICT,
   drug_name TEXT NOT NULL,
   unit TEXT NOT NULL,
+  unit_factor REAL NOT NULL DEFAULT 1,
   qty INTEGER NOT NULL CHECK (qty > 0),
   usage TEXT NOT NULL DEFAULT '',
   frequency TEXT NOT NULL DEFAULT '',
@@ -82,6 +93,7 @@ CREATE INDEX IF NOT EXISTS idx_prescriptions_issue_date ON prescriptions(issue_d
 CREATE INDEX IF NOT EXISTS idx_prescriptions_patient ON prescriptions(patient_name);
 CREATE INDEX IF NOT EXISTS idx_items_prescription ON prescription_items(prescription_id);
 CREATE INDEX IF NOT EXISTS idx_items_drug ON prescription_items(drug_id);
+CREATE INDEX IF NOT EXISTS idx_drug_units_drug ON drug_units(drug_id, sort_order);
 CREATE INDEX IF NOT EXISTS idx_purchases_drug_date ON purchases(drug_id, purchase_date);
 CREATE INDEX IF NOT EXISTS idx_notifications_drug_read ON notifications(drug_id, read_at);
 CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at);

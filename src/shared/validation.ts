@@ -16,17 +16,25 @@ export const viewModeSchema = z.enum(['card', 'list'])
 export const drugStatusSchema = z.enum(['active', 'stopped'])
 export const financePeriodSchema = z.enum(['day', 'week', 'month', 'year'])
 
+export const drugUnitInputSchema = z.object({
+  unit: z.string().trim().min(1, '请填写细分单位').max(8, '细分单位最多 8 字'),
+  factor: z.number().positive('换算比例必须大于 0'),
+  priceCents: z.number().int('售价必须是整数分').min(0, '售价不能小于 0'),
+  costCents: z.number().int('成本必须是整数分').min(0, '成本不能小于 0')
+})
+
 export const drugInputSchema = z.object({
   name: z.string().trim().min(1, '请填写药品名称').max(40, '药品名称最多 40 字'),
   unit: z.string().trim().min(1, '请填写单位').max(8, '单位最多 8 字'),
   inboundDate: pastOrTodaySchema,
-  stockQty: z.number().int('库存必须是整数').min(0, '库存不能小于 0'),
-  warningQty: z.number().int('预警库存必须是整数').min(0, '预警库存不能小于 0'),
+  stockQty: z.number().min(0, '库存不能小于 0'),
+  warningQty: z.number().min(0, '预警库存不能小于 0'),
   category: z.string().trim().max(50, '分类最多 50 字').default(''),
   supplier: z.string().trim().max(50, '供应商最多 50 字').default(''),
   indications: z.string().trim().max(200, '适应症最多 200 字').default(''),
   costCents: z.number().int('成本必须是整数分').min(0, '成本不能小于 0'),
-  priceCents: z.number().int('标价必须是整数分').min(0, '标价不能小于 0')
+  priceCents: z.number().int('标价必须是整数分').min(0, '标价不能小于 0'),
+  units: z.array(drugUnitInputSchema).max(6, '细分单位最多 6 级').optional()
 })
 
 export const purchaseInputSchema = z.object({
@@ -39,6 +47,7 @@ export const purchaseInputSchema = z.object({
 export const prescriptionItemInputSchema = z.object({
   id: z.number().int().positive().optional(),
   drugId: z.number().int().positive(),
+  unit: z.string().trim().max(8).optional(),
   qty: z.number().int('数量必须是整数').min(1, '数量必须大于 0'),
   usage: z.string().trim().max(50, '服用方式最多 50 字').default(''),
   frequency: z.string().trim().max(50, '服用频率最多 50 字').default('')

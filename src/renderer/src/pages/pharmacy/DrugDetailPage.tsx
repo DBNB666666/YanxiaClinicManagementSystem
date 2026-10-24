@@ -6,6 +6,7 @@ import { formatCents } from '@shared/money'
 import { formatDateTime } from '@shared/date'
 import { Banner, Button, EmptyState, PageHeader, Tag } from '../../components/Ui'
 import { useToast } from '../../context/ToastProvider'
+import { formatDrugStock } from '@shared/drugUnits'
 import { PurchaseDialog } from './PurchaseDialog'
 
 export function DrugDetailPage(): React.JSX.Element {
@@ -119,7 +120,9 @@ export function DrugDetailPage(): React.JSX.Element {
         <div>
           <section className="detail-panel">
             <div className="stock-hero">
-              <span className={`stock-number ${low ? 'warning-text' : ''}`.trim()}>{drug.stockQty}</span>
+              <span className={`stock-number ${low ? 'warning-text' : ''}`.trim()}>
+                {formatDrugStock(drug)}
+              </span>
               <span className="stock-unit">{drug.unit}</span>
             </div>
             <div className="stock-sub">

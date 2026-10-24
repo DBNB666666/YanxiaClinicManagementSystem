@@ -5,10 +5,26 @@ export type FinancePeriod = 'day' | 'week' | 'month' | 'year'
 export type ViewMode = 'card' | 'list'
 export type DrugListFilter = 'all' | 'low' | 'stopped'
 
+export interface DrugUnit {
+  id: number
+  unit: string
+  factor: number
+  priceCents: number
+  costCents: number
+}
+
+export interface DrugUnitInput {
+  unit: string
+  factor: number
+  priceCents: number
+  costCents: number
+}
+
 export interface Drug {
   id: number
   name: string
   unit: string
+  units: DrugUnit[]
   inboundDate: string
   stockQty: number
   warningQty: number
@@ -34,6 +50,7 @@ export interface DrugInput {
   indications: string
   costCents: number
   priceCents: number
+  units?: DrugUnitInput[]
 }
 
 export interface Purchase {
@@ -63,6 +80,7 @@ export interface PrescriptionItem {
   drugId: number
   drugName: string
   unit: string
+  unitFactor: number
   qty: number
   usage: string
   frequency: string
@@ -99,6 +117,7 @@ export interface PrescriptionDetail extends Prescription {
 export interface PrescriptionItemInput {
   id?: number
   drugId: number
+  unit?: string
   qty: number
   usage: string
   frequency: string
