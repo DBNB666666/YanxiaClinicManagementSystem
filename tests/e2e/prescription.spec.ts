@@ -89,6 +89,17 @@ test('切换板块后回到原编辑页且未保存内容不丢', async ({ page 
   await page.waitForSelector('[data-testid="prescription-detail-page"]')
 })
 
+test('新建处方离开后再次新增是空白表单', async ({ page }) => {
+  await openApp(page, '/#/prescriptions/new', '[data-testid="prescription-edit-page"]')
+  await page.getByTestId('rx-patient-name').fill('未保存患者')
+  await page.getByRole('button', { name: '返回处方' }).click()
+  await page.getByTestId('leave-confirm-dialog').getByRole('button', { name: '离开' }).click()
+  await page.waitForSelector('[data-testid="prescription-page"]')
+  await page.getByTestId('add-prescription').click()
+  await page.waitForSelector('[data-testid="prescription-edit-page"]')
+  await expect(page.getByTestId('rx-patient-name')).toHaveValue('')
+})
+
 test('编辑处方数量按差额扣库存', async ({ page, request }) => {
   await openApp(page)
   await page.getByTestId('rx-card-1').getByText('编辑').click()

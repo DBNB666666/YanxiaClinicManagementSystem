@@ -925,6 +925,11 @@ export function PrescriptionEditPage(): React.JSX.Element {
         cancelText="继续编辑"
         onCancel={() => setLeaveOpen(false)}
         onConfirm={() => {
+          try {
+            sessionStorage.removeItem(draftKey)
+          } catch {
+            // ignore
+          }
           setLeaveOpen(false)
           setDirty(false)
           navigate(backTarget)
