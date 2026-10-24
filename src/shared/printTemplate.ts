@@ -1,6 +1,12 @@
 import type { PrescriptionDetail } from './types/models'
-import { formatCents } from './money'
 import { formatDateTime } from './date'
+import {
+  PRINT_CONTENT_LAYOUT,
+  buildPrescriptionFooterFields,
+  buildPrescriptionHeaderFields,
+  countPrescriptionPages,
+  getPrescriptionPages
+} from './prescriptionPrintLayout'
 
 function escapeHtml(value: string): string {
   return value
@@ -14,6 +20,7 @@ function escapeHtml(value: string): string {
 export interface PrintTemplateOptions {
   clinicName?: string
   printedAt?: string
+  templateUrl?: string
 }
 
 export function buildPrescriptionHtml(
@@ -22,51 +29,67 @@ export function buildPrescriptionHtml(
 ): string {
   const clinicName = options.clinicName ?? '燕霞诊所'
   const printedAt = options.printedAt ?? formatDateTime(new Date().toISOString())
-  const total = prescriptions.length
+  const totalPages = countPrescriptionPages(prescriptions)
+  let pageNumber = 0
 
   const pages = prescriptions
-    .map((prescription, index) => {
-      const rows = prescription.items
-        .map(
-          (item) => `<tr>
-            <td>${escapeHtml(item.drugName)}</td>
-            <td class="num">${item.qty} ${escapeHtml(item.unit)}</td>
-            <td>${escapeHtml([item.usage, item.frequency].filter(Boolean).join('　'))}</td>
-            <td class="num">${formatCents(item.amountCents)}</td>
-          </tr>`
-        )
-        .join('')
+    .flatMap((prescription) => {
+      const contentPages = getPrescriptionPages(prescription)
+      return contentPages.map((lines, pageIndex) => {
+        pageNumber += 1
+        const isLastPage = pageIndex === contentPages.length - 1
+        const fields = [
+          ...buildPrescriptionHeaderFields(prescription),
+          ...buildPrescriptionFooterFields(prescription, isLastPage)
+        ]
+        if (pageIndex > 0) {
+          fields.push({
+            key: 'continued',
+            text: '续页',
+            x: 0.79,
+            y: 0.052,
+            width: 0.1,
+            size: 8
+          })
+        }
 
-      return `<section class="page">
-        <header>
-          <h1>${escapeHtml(clinicName)}</h1>
-          <div class="rule"></div>
-        </header>
-        <div class="patient">
-          <span>姓名：${escapeHtml(prescription.patientName)}</span>
-          <span>性别：${escapeHtml(prescription.gender)}</span>
-          <span>年龄：${escapeHtml(prescription.age)}</span>
-          <span>日期：${escapeHtml(prescription.issueDate)}</span>
-          <span>医师：${escapeHtml(prescription.doctor)}</span>
-        </div>
-        <div class="diagnosis">诊断：${escapeHtml(prescription.diagnosis)}</div>
-        <div class="rp-title">Rp</div>
-        <div class="rp">${escapeHtml(prescription.rp).replaceAll('\n', '<br />')}</div>
-        <table>
-          <thead><tr><th>药品</th><th>数量</th><th>用法用量</th><th>金额</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-        <div class="fees">
-          <div><span>药品金额</span><span>${formatCents(prescription.drugAmountCents)}</span></div>
-          <div><span>注射费</span><span>${formatCents(prescription.injectionFeeCents)}</span></div>
-          <div class="total"><span>合计</span><span>${formatCents(prescription.totalCents)}</span></div>
-        </div>
-        <div class="signature">医师签名：____________________</div>
-        <footer>
-          <span>打印时间：${escapeHtml(printedAt)}</span>
-          <span>第 ${index + 1} / ${total} 页</span>
-        </footer>
-      </section>`
+        const fieldHtml = fields
+          .map(
+            (field) =>
+              `<span class="field field-${escapeHtml(field.key)}" style="left:${(field.x * 100).toFixed(
+                3
+              )}%;top:${(field.y * 100).toFixed(3)}%;width:${(field.width * 100).toFixed(
+                3
+              )}%;font-size:${field.size}pt;${field.align ? `text-align:${field.align};` : ''}">${escapeHtml(
+                field.text
+              )}</span>`
+          )
+          .join('')
+
+        const lineHtml = lines
+          .map(
+            (line, index) =>
+              `<span class="content-line" style="left:${(PRINT_CONTENT_LAYOUT.x * 100).toFixed(
+                3
+              )}%;top:${(
+                (PRINT_CONTENT_LAYOUT.y + index * PRINT_CONTENT_LAYOUT.lineHeight) *
+                100
+              ).toFixed(3)}%;width:${(PRINT_CONTENT_LAYOUT.width * 100).toFixed(
+                3
+              )}%;font-size:${PRINT_CONTENT_LAYOUT.fontSize}pt;">${escapeHtml(line)}</span>`
+          )
+          .join('')
+
+        return `<section class="sheet">
+          ${options.templateUrl ? `<img class="template-bg" src="${escapeHtml(options.templateUrl)}" alt="" />` : ''}
+          ${fieldHtml}
+          ${lineHtml}
+          <footer>
+            <span>${escapeHtml(clinicName)} · 打印时间：${escapeHtml(printedAt)}</span>
+            <span>第 ${pageNumber} / ${totalPages} 页</span>
+          </footer>
+        </section>`
+      })
     })
     .join('\n')
 
@@ -76,35 +99,32 @@ export function buildPrescriptionHtml(
 <meta charset="utf-8" />
 <title>处方打印预览</title>
 <style>
-  @page { size: A5 portrait; margin: 0; }
+  @page { size: 130mm 190mm; margin: 0; }
   html, body { margin: 0; padding: 0; background: #e9edee; }
-  .page {
-    width: 148mm; height: 210mm; box-sizing: border-box;
-    padding: 12mm 14mm 14mm; margin: 0 auto 8mm; background: #fff; color: #111;
-    font-family: "SimSun", "宋体", serif; font-size: 10.5pt; line-height: 1.6;
-    display: flex; flex-direction: column;
+  .sheet {
+    position: relative; width: 130mm; height: 190mm; box-sizing: border-box;
+    margin: 0 auto 8mm; background: #fff; color: #111; overflow: hidden;
+    font-family: "SimHei", "黑体", "Microsoft YaHei", sans-serif;
+    page-break-after: always; break-after: page;
   }
-  .page:last-child { margin-bottom: 0; }
-  header h1 {
-    margin: 0; text-align: center; font-family: "SimHei", "黑体", sans-serif;
-    font-size: 18pt; font-weight: 600;
+  .sheet:last-child { page-break-after: auto; break-after: auto; margin-bottom: 0; }
+  .template-bg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .field {
+    position: absolute; display: block; height: 1.4em; line-height: 1.1;
+    white-space: nowrap; overflow: hidden; color: #111;
   }
-  .rule { border-top: 0.6pt solid #000; margin: 3mm 0; }
-  .patient { display: flex; flex-wrap: wrap; gap: 2mm 6mm; }
-  .diagnosis { margin-top: 2mm; }
-  .rp-title { font-weight: 600; font-size: 12pt; margin-top: 3mm; }
-  .rp { white-space: normal; word-break: break-all; min-height: 10mm; }
-  table { width: 100%; border-collapse: collapse; margin-top: 3mm; }
-  th, td { text-align: left; padding: 1.2mm 1mm; border-bottom: 0.5pt solid #999; vertical-align: top; }
-  th { font-weight: 600; }
-  .num { text-align: right; white-space: nowrap; }
-  .fees { margin-top: auto; display: flex; flex-direction: column; gap: 0.8mm; align-items: flex-end; }
-  .fees > div { display: flex; justify-content: space-between; width: 62mm; }
-  .fees .total { font-weight: 600; border-top: 0.5pt solid #999; padding-top: 1mm; }
-  .signature { margin-top: 10mm; }
-  footer { display: flex; justify-content: space-between; margin-top: 4mm; font-size: 8.5pt; color: #555; }
+  .field-diagnosis { overflow: hidden; }
+  .content-line {
+    position: absolute; display: block; white-space: pre; overflow: hidden;
+    line-height: 1.15; color: #111;
+  }
+  footer {
+    position: absolute; left: 4%; right: 4%; bottom: 1.6%;
+    display: flex; justify-content: space-between; gap: 4mm;
+    color: #555; font-size: 7pt; line-height: 1.2;
+  }
   @media screen {
-    .page { box-shadow: 0 4px 18px rgba(0,0,0,.12); }
+    .sheet { box-shadow: 0 4px 18px rgba(0,0,0,.12); }
   }
 </style>
 </head>

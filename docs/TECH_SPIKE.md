@@ -16,18 +16,21 @@
 
 验证内容：初始化 WASM → 建表 → 插入 → `db.export()` → `write-file-atomic` 写盘 → 重新打开 → 查询。
 
-## 3. A5 中文 PDF
+## 3. 图片模板正32开 PDF
 
-实际生产路径：`src/main/services/pdfService.ts`（pdf-lib + `@pdf-lib/fontkit` + 系统 SimHei）。
+实际生产路径：`src/main/services/pdfService.ts`（pdf-lib + `@pdf-lib/fontkit` + 系统 SimHei + JPG 底图）。
+
+模板：`src/renderer/src/assets/prescription-template.jpg`（原 `IMG_9411.JPG`）；打包时复制到 `resources/prescription-template.jpg`。
 
 自动化验证：`tests/integration/pdf.test.ts`、`tests/e2e/print.spec.ts`
 
 结果：**通过**。
 
-- 单张 PDF：A5（148×210mm），1 页。
+- 单张 PDF：正 32 开 130×190mm，1 页。
+- 图片底图铺满页面，患者/诊断/日期/用药/金额/医师叠加在表单横线上。
 - 批量 PDF：每张处方从新页开始。
 - 中文患者/药品/金额正常输出。
-- 页脚包含打印时间和页码。
+- 页脚包含打印时间、页码。
 
 ## 4. Electron 窗口验证
 

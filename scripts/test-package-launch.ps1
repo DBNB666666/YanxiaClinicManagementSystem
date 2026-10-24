@@ -40,6 +40,11 @@ try {
   if (-not (Test-Path -LiteralPath $mainExe)) {
     throw "安装包缺少主程序：yanxia-clinic.exe"
   }
+  $template = Join-Path $testDir "resources\prescription-template.jpg"
+  if (-not (Test-Path -LiteralPath $template)) {
+    throw "安装包缺少处方模板图片：resources\prescription-template.jpg"
+  }
+  Write-Output "PASS 安装包包含处方模板图片：$template"
 
   $aclText = (icacls $testDir 2>&1 | Out-String)
   if ($aclText -match "Low Mandatory Level") {

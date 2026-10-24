@@ -153,5 +153,5 @@ test('打印预览展示处方内容', async ({ page }) => {
   const frame = page.frameLocator('.print-frame')
   await expect(frame.getByText('张秀兰').first()).toBeVisible()
   await expect(frame.getByText('燕霞诊所').first()).toBeVisible()
-  await expect(frame.getByText('¥68.00').first()).toBeVisible()
+  await expect(frame.getByText('48.00').first()).toBeVisible()
 })

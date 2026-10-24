@@ -668,16 +668,12 @@
 
 .print-frame {
   display: block;
-  width: 559px;
-  height: 794px;
+  width: 491px;
+  height: 718px;
   margin: 0 auto;
   border: 0;
   background: #fff;
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
-}
-
-.print-frame-wrap.multi .print-frame {
-  height: 1600px;
 }
 
 .notification-item {

@@ -3,6 +3,11 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Download, Printer } from 'lucide-react'
 import type { PrescriptionDetail } from '@shared/types/models'
 import { buildPrescriptionHtml } from '@shared/printTemplate'
+import {
+  PRINT_PAGE_HEIGHT_PX,
+  countPrescriptionPages
+} from '@shared/prescriptionPrintLayout'
+import templateUrl from '../../assets/prescription-template.jpg'
 import { Button, EmptyState } from '../../components/Ui'
 import { useToast } from '../../context/ToastProvider'
 
@@ -48,7 +53,11 @@ export function PrescriptionPrintPage(): React.JSX.Element {
     }
   }, [ids])
 
-  const html = useMemo(() => (details.length ? buildPrescriptionHtml(details) : ''), [details])
+  const pageCount = useMemo(() => countPrescriptionPages(details), [details])
+  const html = useMemo(
+    () => (details.length ? buildPrescriptionHtml(details, { templateUrl }) : ''),
+    [details]
+  )
 
   const run = async (action: 'print' | 'export'): Promise<void> => {
     if (!ids.length) return
@@ -111,7 +120,7 @@ export function PrescriptionPrintPage(): React.JSX.Element {
             className="print-frame"
             title="处方打印预览"
             srcDoc={html}
-            style={{ height: details.length * 794 }}
+            style={{ height: Math.max(pageCount, 1) * PRINT_PAGE_HEIGHT_PX }}
           />
         )}
       </div>

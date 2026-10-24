@@ -18,28 +18,32 @@ afterEach(() => {
 })
 
 describe('print/pdf', () => {
-  it('HTML 模板包含患者与金额', () => {
+  it('HTML 模板使用图片并包含患者与金额', () => {
     const created = ctx.service.createPrescription(P1)
     const detail = ctx.service.getPrescription(created.id)
-    const html = buildPrescriptionHtml([detail])
+    const html = buildPrescriptionHtml([detail], { templateUrl: 'template.jpg' })
+    expect(html).toContain('template.jpg')
+    expect(html).toContain('class="template-bg"')
     expect(html).toContain('张秀兰')
-    expect(html).toContain('¥48.00')
-    expect(html).toContain('Rp')
+    expect(html).toContain('48.00')
+    expect(html).toContain('阿莫西林胶囊')
     expect(html).toContain('燕霞诊所')
   })
 
-  it('生成 A5 单张 PDF', async () => {
+  it('生成正32开（130×190mm）单张 PDF 并嵌入模板图片', async () => {
     const created = ctx.service.createPrescription(P1)
     const detail = ctx.service.getPrescription(created.id)
     const out = join(ctx.dir, 'single.pdf')
     const result = await generatePrescriptionPdf([detail], out)
     expect(result.pageCount).toBe(1)
     expect(existsSync(out)).toBe(true)
-    const doc = await PDFDocument.load(await import('node:fs').then((fs) => fs.readFileSync(out)))
+    const bytes = await import('node:fs').then((fs) => fs.readFileSync(out))
+    expect(bytes.length).toBeGreaterThan(200000)
+    const doc = await PDFDocument.load(bytes)
     const page = doc.getPages()[0]
     const size = page.getSize()
-    expect((size.width * 25.4) / 72).toBeCloseTo(148, 1)
-    expect((size.height * 25.4) / 72).toBeCloseTo(210, 1)
+    expect((size.width * 25.4) / 72).toBeCloseTo(130, 1)
+    expect((size.height * 25.4) / 72).toBeCloseTo(190, 1)
   })
 
   it('批量生成包含多页', async () => {

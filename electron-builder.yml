@@ -12,6 +12,8 @@ asar: true
 extraResources:
   - from: node_modules/sql.js/dist/sql-wasm.wasm
     to: sql-wasm.wasm
+  - from: src/renderer/src/assets/prescription-template.jpg
+    to: prescription-template.jpg
 extraFiles:
   - from: scripts/start-yanxia.cmd
     to: 启动燕霞诊所管理系统.cmd

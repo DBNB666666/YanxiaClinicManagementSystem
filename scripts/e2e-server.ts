@@ -107,7 +107,7 @@ async function exportPdf(ids: number[]): Promise<{ path: string; pageCount: numb
 
 async function dispatch(ns: string, method: string, args: unknown[]): Promise<unknown> {
   if (ns === 'app' && method === 'getInfo') {
-    return { version: '0.0.1', dataDir: dataRoot, lastBackupAt: null }
+    return { version: '0.1.0', dataDir: dataRoot, lastBackupAt: null }
   }
   if (ns === 'settings' && method === 'get') return service.getSettings()
   if (ns === 'settings' && method === 'set') return service.setSettings(args[0] as never)

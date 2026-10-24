@@ -30,11 +30,17 @@ test('批量导出合并且每张从新页开始', async ({ request }) => {
   expect(doc.getPageCount()).toBeGreaterThanOrEqual(2)
 })
 
-test('打印预览与 A5 PDF 导出', async ({ page, request }) => {
+test('图片模板打印预览与正32开 PDF 导出', async ({ page, request }) => {
   await openApp(page, '/#/prescriptions/print?ids=1', '[data-testid="print-page"]')
   const frame = page.frameLocator('.print-frame')
   await expect(frame.getByText('张秀兰').first()).toBeVisible()
   await expect(frame.getByText('燕霞诊所').first()).toBeVisible()
+  await expect(frame.getByText('48.00').first()).toBeVisible()
+  const image = frame.locator('img.template-bg')
+  await expect(image).toHaveCount(1)
+  await expect
+    .poll(async () => image.evaluate((element: HTMLImageElement) => element.naturalWidth))
+    .toBeGreaterThan(0)
 
   await page.getByRole('button', { name: '导出 PDF' }).click()
   await expect(page.locator('.toast')).toContainText('已生成 PDF')
@@ -46,6 +52,6 @@ test('打印预览与 A5 PDF 导出', async ({ page, request }) => {
   const doc = await PDFDocument.load(readFileSync(result.path))
   expect(doc.getPageCount()).toBe(1)
   const pageSize = doc.getPages()[0].getSize()
-  expect((pageSize.width * 25.4) / 72).toBeCloseTo(148, 1)
-  expect((pageSize.height * 25.4) / 72).toBeCloseTo(210, 1)
+  expect((pageSize.width * 25.4) / 72).toBeCloseTo(130, 1)
+  expect((pageSize.height * 25.4) / 72).toBeCloseTo(190, 1)
 })
