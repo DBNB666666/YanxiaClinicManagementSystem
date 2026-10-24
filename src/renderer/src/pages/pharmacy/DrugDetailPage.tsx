@@ -6,7 +6,7 @@ import { formatCents } from '@shared/money'
 import { formatDateTime } from '@shared/date'
 import { Banner, Button, EmptyState, PageHeader, Tag } from '../../components/Ui'
 import { useToast } from '../../context/ToastProvider'
-import { formatDrugStock } from '@shared/drugUnits'
+import { formatDrugStock, formatDrugUnitTotals } from '@shared/drugUnits'
 import { Breadcrumbs } from '../../components/Breadcrumbs'
 import { PurchaseDialog } from './PurchaseDialog'
 
@@ -134,6 +134,9 @@ export function DrugDetailPage(): React.JSX.Element {
             </div>
             <div className="stock-sub">
               预警值：{drug.warningQty} {drug.unit} · 入库日期：{drug.inboundDate}
+            </div>
+            <div className="stock-sub" data-testid="stock-unit-totals">
+              合计：{formatDrugUnitTotals(drug)}
             </div>
           </section>
 

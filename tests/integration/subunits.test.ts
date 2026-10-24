@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { formatDrugStock } from '../../src/shared/drugUnits'
+import { formatDrugStock, formatDrugUnitTotals } from '../../src/shared/drugUnits'
 import { createTestContext, type TestContext } from '../helpers/testStore'
 
 let ctx: TestContext
@@ -51,5 +51,22 @@ describe('药品细分单位', () => {
     const updated = ctx.service.getDrug(created.id)
     expect(updated.stockQty).toBeCloseTo(5 - 1 / 7, 5)
     expect(formatDrugStock(updated)).toBe('4盒 6支')
+    expect(
+      formatDrugStock({
+        unit: '盒',
+        stockQty: 10 + 4 / 6,
+        units: [{ id: 1, unit: '支', factor: 6, priceCents: 100, costCents: 50 }]
+      })
+    ).toBe('10盒 4支')
+    expect(
+      formatDrugUnitTotals({
+        unit: '盒',
+        stockQty: 10,
+        units: [
+          { id: 1, unit: '板', factor: 2, priceCents: 100, costCents: 50 },
+          { id: 2, unit: '片', factor: 6, priceCents: 10, costCents: 5 }
+        ]
+      })
+    ).toBe('10盒 · 20板 · 120片')
   })
 })

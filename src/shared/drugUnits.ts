@@ -56,6 +56,22 @@ export function formatDrugStock(drug: Pick<Drug, 'unit' | 'stockQty' | 'units'>)
   return parts.join(' ')
 }
 
+export function formatDrugUnitTotals(drug: Pick<Drug, 'unit' | 'stockQty' | 'units'>): string {
+  const units = drug.units ?? []
+  if (!units.length) return `${drug.stockQty} ${drug.unit}`
+  const totalFactor = totalUnitFactor(units)
+  const smallest = Math.round(drug.stockQty * totalFactor)
+  const parts: string[] = []
+  let cumulative = 1
+  parts.push(`${Math.floor(smallest / totalFactor)}${drug.unit}`)
+  for (const unit of units) {
+    cumulative *= Number(unit.factor)
+    const unitSize = totalFactor / cumulative
+    parts.push(`${Math.floor(smallest / unitSize)}${unit.unit}`)
+  }
+  return parts.join(' · ')
+}
+
 export function normalizeUnitInputs(units: DrugUnitInput[] | undefined): DrugUnitInput[] {
   return (units ?? []).filter((unit) => unit.unit.trim() && unit.factor > 0)
 }
