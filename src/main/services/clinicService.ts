@@ -713,16 +713,31 @@ export class ClinicService {
           : automaticDrugAmount
       const totalCents = drugAmountCents + parsed.injectionFeeCents
 
+      const medicationsUnchanged =
+        oldItems.length === parsed.items.length &&
+        parsed.items.every((item) => {
+          const old = item.id ? oldById.get(item.id) : undefined
+          return (
+            old != null &&
+            Number(old.drug_id) === item.drugId &&
+            Number(old.qty) === item.qty &&
+            old.unit === (item.unit ?? old.unit)
+          )
+        })
+
       const stockDelta = new Map<number, number>()
-      for (const old of oldItems) {
-        stockDelta.set(
-          Number(old.drug_id),
-          (stockDelta.get(Number(old.drug_id)) ?? 0) + Number(old.qty) * Number(old.unit_factor ?? 1)
-        )
-      }
-      for (const row of prepared) {
-        const drugId = row.old ? Number(row.old.drug_id) : row.item.drugId
-        stockDelta.set(drugId, (stockDelta.get(drugId) ?? 0) - row.item.qty * row.baseFactor)
+      if (!medicationsUnchanged) {
+        for (const old of oldItems) {
+          stockDelta.set(
+            Number(old.drug_id),
+            (stockDelta.get(Number(old.drug_id)) ?? 0) +
+              Number(old.qty) * Number(old.unit_factor ?? 1)
+          )
+        }
+        for (const row of prepared) {
+          const drugId = row.old ? Number(row.old.drug_id) : row.item.drugId
+          stockDelta.set(drugId, (stockDelta.get(drugId) ?? 0) - row.item.qty * row.baseFactor)
+        }
       }
 
       const warnings: string[] = []

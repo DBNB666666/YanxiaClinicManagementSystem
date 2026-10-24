@@ -151,6 +151,28 @@ describe('处方', () => {
     expect(updated.totalCents).toBe(8600)
   })
 
+  it('只修改患者信息不扣减库存', () => {
+    const created = ctx.service.createPrescription(P1)
+    expect(ctx.service.getDrug(1).stockQty).toBe(8)
+    expect(ctx.service.getDrug(2).stockQty).toBe(2)
+    const detail = ctx.service.getPrescription(created.id)
+    ctx.service.updatePrescription(created.id, {
+      ...P1,
+      patientName: '张秀兰改',
+      items: detail.items.map((item) => ({
+        id: item.id,
+        drugId: item.drugId,
+        unit: item.unit,
+        qty: item.qty,
+        usage: item.usage,
+        frequency: item.frequency
+      }))
+    })
+    expect(ctx.service.getDrug(1).stockQty).toBe(8)
+    expect(ctx.service.getDrug(2).stockQty).toBe(2)
+    expect(ctx.service.getPrescription(created.id).patientName).toBe('张秀兰改')
+  })
+
   it('删除处方退回库存并从财务移除', () => {
     const created = ctx.service.createPrescription(P1)
     expect(ctx.service.getDrug(1).stockQty).toBe(8)
