@@ -1,6 +1,6 @@
 ﻿# 燕霞诊所管理系统
 
-Windows 绿色免安装单机版，版本 **0.3.0**。三个模块：处方（含详情页）、药房、财务，另有库存预警通知。
+Windows 绿色免安装单机版，版本 **0.4.0**。三个模块：处方（含详情页）、药房、财务，另有库存预警通知。
 
 技术栈：Electron + React + TypeScript + electron-vite + sql.js（SQLite WASM）+ pdf-lib。
 
