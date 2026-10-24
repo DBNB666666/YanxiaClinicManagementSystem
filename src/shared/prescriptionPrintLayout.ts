@@ -75,7 +75,7 @@ export function buildPrescriptionFooterFields(
         key: 'doctor',
         text: prescription.doctor,
         x: 0.675,
-        y: 0.771,
+        y: 0.744,
         width: 0.22,
         size: 10
       }

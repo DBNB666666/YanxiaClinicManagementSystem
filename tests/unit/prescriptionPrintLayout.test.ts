@@ -3,6 +3,7 @@ import type { PrescriptionDetail } from '../../src/shared/types/models'
 import {
   PRINT_CONTENT_LAYOUT,
   PRINT_CONTENT_MAX_LINES,
+  buildPrescriptionFooterFields,
   buildPrescriptionHeaderFields
 } from '../../src/shared/prescriptionPrintLayout'
 
@@ -37,5 +38,12 @@ describe('prescription print layout', () => {
     const lastLineBottom =
       PRINT_CONTENT_LAYOUT.y + (PRINT_CONTENT_MAX_LINES - 1) * PRINT_CONTENT_LAYOUT.lineHeight
     expect(lastLineBottom).toBeLessThan(0.7)
+  })
+
+  it('医师姓名位于“医师”标签同一行右侧、签名横线上方', () => {
+    const doctor = buildPrescriptionFooterFields(detail, true).find((field) => field.key === 'doctor')
+    expect(doctor).toBeDefined()
+    expect(doctor!.x).toBeGreaterThanOrEqual(0.65)
+    expect(doctor!.y).toBeLessThan(0.75)
   })
 })
