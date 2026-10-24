@@ -104,7 +104,7 @@ export function PrescriptionPrintPage(): React.JSX.Element {
       const onMove = (moveEvent: PointerEvent): void => {
         const dx = (moveEvent.clientX - start.clientX) / PRINT_PAGE_WIDTH_PX
         const dy = (moveEvent.clientY - start.clientY) / PRINT_PAGE_HEIGHT_PX
-        let next = { ...layoutRef.current }
+        const next = { ...layoutRef.current }
         if (mode === 'move') {
           next.x = Math.min(1 - start.width, Math.max(0, start.x + dx))
           next.y = Math.min(0.95, Math.max(0, start.y + dy))
