@@ -32,6 +32,18 @@ test('点击处方卡片进入详情页', async ({ page }) => {
   await expect(page.getByTestId('detail-delete')).toBeVisible()
 })
 
+test('面包屑显示处方层级并可跳转', async ({ page }) => {
+  await openApp(page, '/#/prescriptions/1/edit', '[data-testid="prescription-edit-page"]')
+  const breadcrumbs = page.getByTestId('breadcrumbs')
+  await expect(breadcrumbs).toContainText('处方')
+  await expect(breadcrumbs).toContainText('张秀兰')
+  await expect(breadcrumbs).toContainText('编辑处方')
+  await breadcrumbs.getByRole('link', { name: '张秀兰' }).click()
+  await page.waitForSelector('[data-testid="prescription-detail-page"]')
+  await page.getByTestId('breadcrumbs').getByRole('link', { name: '处方' }).click()
+  await page.waitForSelector('[data-testid="prescription-page"]')
+})
+
 test('点击处方列表行进入详情页', async ({ page }) => {
   await openApp(page)
   await page.getByTestId('view-list').click()

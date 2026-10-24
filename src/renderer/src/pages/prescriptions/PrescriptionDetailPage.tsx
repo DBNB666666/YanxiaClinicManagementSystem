@@ -10,6 +10,7 @@ import {
   EmptyState,
   PageHeader
 } from '../../components/Ui'
+import { Breadcrumbs } from '../../components/Breadcrumbs'
 import { useAsync } from '../../hooks/useAsync'
 import { useToast } from '../../context/ToastProvider'
 
@@ -60,6 +61,13 @@ export function PrescriptionDetailPage(): React.JSX.Element {
 
   return (
     <div data-testid="prescription-detail-page">
+      <Breadcrumbs
+        items={[
+          { label: '处方', to: '/prescriptions' },
+          { label: prescription.patientName },
+          { label: '处方详情' }
+        ]}
+      />
       <PageHeader
         title="处方详情"
         subtitle={`${prescription.patientName} · ${prescription.issueDate}`}

@@ -16,6 +16,7 @@ import {
   SearchInput,
   TextInput
 } from '../../components/Ui'
+import { Breadcrumbs } from '../../components/Breadcrumbs'
 import { useSettings } from '../../context/SettingsProvider'
 import { useToast } from '../../context/ToastProvider'
 
@@ -435,6 +436,20 @@ export function PrescriptionEditPage(): React.JSX.Element {
 
   return (
     <div data-testid="prescription-edit-page">
+      <Breadcrumbs
+        items={
+          editId
+            ? [
+                { label: '处方', to: '/prescriptions' },
+                {
+                  label: form.patientName || '处方详情',
+                  to: `/prescriptions/${editId}`
+                },
+                { label: '编辑处方' }
+              ]
+            : [{ label: '处方', to: '/prescriptions' }, { label: '新建处方' }]
+        }
+      />
       <div className="page-head">
         <Button variant="ghost" size="sm" icon={<ArrowLeft size={16} />} onClick={requestBack}>
           返回处方

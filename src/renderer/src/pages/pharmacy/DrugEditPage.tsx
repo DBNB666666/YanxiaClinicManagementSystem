@@ -5,6 +5,7 @@ import type { DrugInput, DrugUnitInput } from '@shared/types/models'
 import { centsToInput, formatCents, toCents } from '@shared/money'
 import { todayIso } from '@shared/date'
 import { Button, ConfirmDialog, Field, PageHeader, TextArea, TextInput } from '../../components/Ui'
+import { Breadcrumbs } from '../../components/Breadcrumbs'
 import { useToast } from '../../context/ToastProvider'
 
 interface DrugForm {
@@ -190,6 +191,17 @@ export function DrugEditPage(): React.JSX.Element {
 
   return (
     <div data-testid="drug-edit-page">
+      <Breadcrumbs
+        items={
+          editId
+            ? [
+                { label: '药房', to: '/pharmacy' },
+                { label: form.name || '药品详情', to: `/pharmacy/${editId}` },
+                { label: '编辑药品' }
+              ]
+            : [{ label: '药房', to: '/pharmacy' }, { label: '新建药品' }]
+        }
+      />
       <PageHeader
         title={editId ? '编辑药品' : '新建药品'}
         actions={

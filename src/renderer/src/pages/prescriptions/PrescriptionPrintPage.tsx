@@ -10,6 +10,7 @@ import {
 } from '@shared/prescriptionPrintLayout'
 import templateUrl from '../../assets/prescription-template.jpg'
 import { Button, EmptyState } from '../../components/Ui'
+import { Breadcrumbs } from '../../components/Breadcrumbs'
 import { useSettings } from '../../context/SettingsProvider'
 import { useToast } from '../../context/ToastProvider'
 
@@ -147,6 +148,20 @@ export function PrescriptionPrintPage(): React.JSX.Element {
 
   return (
     <div className="print-page" data-testid="print-page">
+      <Breadcrumbs
+        items={[
+          { label: '处方', to: '/prescriptions' },
+          ...(details.length === 1
+            ? [
+                {
+                  label: details[0].patientName,
+                  to: `/prescriptions/${details[0].id}`
+                }
+              ]
+            : []),
+          { label: '打印预览' }
+        ]}
+      />
       <div className="print-toolbar">
         <Button variant="ghost" size="sm" icon={<ArrowLeft size={16} />} onClick={() => navigate(-1)}>
           返回

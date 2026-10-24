@@ -42,6 +42,16 @@ test('切换板块后编辑药品返回详情而不是药房', async ({ page }) 
   await page.waitForSelector('[data-testid="drug-detail-page"]')
 })
 
+test('面包屑显示药品层级并可跳转', async ({ page }) => {
+  await openApp(page, '/#/pharmacy/1/edit', '[data-testid="drug-edit-page"]')
+  const breadcrumbs = page.getByTestId('breadcrumbs')
+  await expect(breadcrumbs).toContainText('药房')
+  await expect(breadcrumbs).toContainText('阿莫西林胶囊')
+  await expect(breadcrumbs).toContainText('编辑药品')
+  await breadcrumbs.getByRole('link', { name: '药房' }).click()
+  await page.waitForSelector('[data-testid="pharmacy-page"]')
+})
+
 test('新增药品、进货与停用', async ({ page, request }) => {
   await openApp(page, '/#/pharmacy', '[data-testid="pharmacy-page"]')
   await page.getByTestId('add-drug').click()

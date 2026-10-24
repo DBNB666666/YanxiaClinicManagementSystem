@@ -7,6 +7,7 @@ import { formatDateTime } from '@shared/date'
 import { Banner, Button, EmptyState, PageHeader, Tag } from '../../components/Ui'
 import { useToast } from '../../context/ToastProvider'
 import { formatDrugStock } from '@shared/drugUnits'
+import { Breadcrumbs } from '../../components/Breadcrumbs'
 import { PurchaseDialog } from './PurchaseDialog'
 
 export function DrugDetailPage(): React.JSX.Element {
@@ -60,6 +61,13 @@ export function DrugDetailPage(): React.JSX.Element {
 
   return (
     <div data-testid="drug-detail-page">
+      <Breadcrumbs
+        items={[
+          { label: '药房', to: '/pharmacy' },
+          { label: drug.name },
+          { label: '药品详情' }
+        ]}
+      />
       <PageHeader
         title={drug.name}
         subtitle={
