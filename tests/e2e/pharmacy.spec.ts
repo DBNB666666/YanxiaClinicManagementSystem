@@ -9,6 +9,7 @@ test('药房列表、搜索、筛选与视图切换', async ({ page }) => {
   await openApp(page, '/#/pharmacy', '[data-testid="pharmacy-page"]')
   await expect(page.getByTestId('drug-card-1')).toBeVisible()
   await expect(page.getByText('阿莫西林胶囊').first()).toBeVisible()
+  await expect(page.getByText('详情')).toHaveCount(0)
 
   await page.getByTestId('drug-search').fill('阿莫')
   await expect(page.getByTestId('drug-card-1')).toBeVisible()
@@ -22,6 +23,13 @@ test('药房列表、搜索、筛选与视图切换', async ({ page }) => {
   await page.getByTestId('drug-filter').selectOption('low')
   await expect(page.getByTestId('drug-row-2')).toBeVisible()
   await expect(page.getByText('阿莫西林胶囊')).toHaveCount(0)
+})
+
+test('点击药品卡片进入详情', async ({ page }) => {
+  await openApp(page, '/#/pharmacy', '[data-testid="pharmacy-page"]')
+  await page.getByTestId('drug-card-1').click()
+  await page.waitForSelector('[data-testid="drug-detail-page"]')
+  await expect(page.getByTestId('drug-detail-page')).toContainText('阿莫西林胶囊')
 })
 
 test('新增药品、进货与停用', async ({ page, request }) => {

@@ -178,7 +178,21 @@ export function PharmacyListPage(): React.JSX.Element {
           {items.map((drug) => {
             const low = drug.status === 'active' && drug.stockQty <= drug.warningQty
             return (
-              <article key={drug.id} className="pharmacy-card" data-testid={`drug-card-${drug.id}`}>
+              <article
+                key={drug.id}
+                className="pharmacy-card pharmacy-card-clickable"
+                data-testid={`drug-card-${drug.id}`}
+                role="link"
+                tabIndex={0}
+                aria-label={`查看 ${drug.name} 详情`}
+                onClick={() => navigate(`/pharmacy/${drug.id}`)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    navigate(`/pharmacy/${drug.id}`)
+                  }
+                }}
+              >
                 <div className="pharmacy-card-head">
                   <span className="pharmacy-name">{drug.name}</span>
                 </div>
@@ -197,10 +211,10 @@ export function PharmacyListPage(): React.JSX.Element {
                   <span>分类：{drug.category || '未分类'}</span>
                   <span>供应商：{drug.supplier || '—'}</span>
                 </div>
-                <div className="pharmacy-card-actions">
-                  <Button size="xs" variant="ghost" onClick={() => navigate(`/pharmacy/${drug.id}`)}>
-                    详情
-                  </Button>
+                <div
+                  className="pharmacy-card-actions"
+                  onClick={(event) => event.stopPropagation()}
+                >
                   <Button size="xs" variant="ghost" onClick={() => navigate(`/pharmacy/${drug.id}/edit`)}>
                     编辑
                   </Button>

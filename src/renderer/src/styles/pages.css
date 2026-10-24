@@ -32,12 +32,14 @@
 }
 
 .rx-card-clickable,
-.rx-row-clickable {
+.rx-row-clickable,
+.pharmacy-card-clickable {
   cursor: pointer;
 }
 
 .rx-card-clickable:focus-visible,
-.rx-row-clickable:focus-visible {
+.rx-row-clickable:focus-visible,
+.pharmacy-card-clickable:focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
