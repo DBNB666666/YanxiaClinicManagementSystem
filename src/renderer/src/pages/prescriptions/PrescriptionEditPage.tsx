@@ -6,6 +6,7 @@ import { isApiErrorCode } from '@shared/apiError'
 import { centsToInput, formatCents, toCents } from '@shared/money'
 import { todayIso } from '@shared/date'
 import { mergeUsage } from '@shared/prescriptionUsage'
+import { drugUnitChoices, formatDrugStock, type UnitChoice } from '@shared/drugUnits'
 import {
   Button,
   ConfirmDialog,
@@ -24,6 +25,8 @@ interface EditItem {
   drugId: number
   drugName: string
   unit: string
+  unitChoices: UnitChoice[]
+  baseFactor: number
   qty: number
   usage: string
   frequency: string
@@ -65,12 +68,18 @@ function emptyForm(lastDoctor: string): FormState {
 
 function mapItem(item: PrescriptionItem, drugs: Drug[]): EditItem {
   const drug = drugs.find((entry) => entry.id === item.drugId)
+  const choices = drug
+    ? drugUnitChoices(drug)
+    : [{ unit: item.unit, factor: 1, priceCents: item.unitPriceCents, costCents: item.unitCostCents }]
+  const selected = choices.find((choice) => choice.unit === item.unit) ?? choices[0]
   return {
     key: newKey(),
     id: item.id,
     drugId: item.drugId,
     drugName: item.drugName,
     unit: item.unit,
+    unitChoices: choices,
+    baseFactor: selected ? 1 / selected.factor : 1,
     qty: item.qty,
     usage: mergeUsage(item.usage, item.frequency),
     frequency: '',
@@ -261,6 +270,14 @@ export function PrescriptionEditPage(): React.JSX.Element {
       current.map((item) => {
         if (item.key !== key) return item
         const next = { ...item, ...patch }
+        if (patch.unit !== undefined) {
+          const choice = next.unitChoices.find((entry) => entry.unit === patch.unit)
+          if (choice) {
+            next.unitPriceCents = choice.priceCents
+            next.unitCostCents = choice.costCents
+            next.baseFactor = 1 / choice.factor
+          }
+        }
         next.amountCents = next.qty * next.unitPriceCents
         return next
       })
@@ -297,6 +314,8 @@ export function PrescriptionEditPage(): React.JSX.Element {
         drugId: drug.id,
         drugName: drug.name,
         unit: drug.unit,
+        unitChoices: drugUnitChoices(drug),
+        baseFactor: 1,
         qty: 1,
         usage: '',
         frequency: '',
@@ -321,6 +340,7 @@ export function PrescriptionEditPage(): React.JSX.Element {
     items: items.map((item) => ({
       id: item.id,
       drugId: item.drugId,
+      unit: item.unit,
       qty: item.qty,
       usage: item.usage,
       frequency: ''
@@ -593,8 +613,25 @@ export function PrescriptionEditPage(): React.JSX.Element {
                     <tr key={item.key}>
                       <td>
                         <div className="med-drug-name">{item.drugName}</div>
-                        <div className={`med-drug-stock ${item.stockQty <= item.warningQty ? 'low' : ''}`.trim()}>
-                          库存 {item.stockQty} {item.unit} · 预警 {item.warningQty}
+                        <div
+                          className={`med-drug-stock ${
+                            item.stockQty <= item.warningQty ? 'low' : ''
+                          }`.trim()}
+                        >
+                          库存{' '}
+                          {formatDrugStock({
+                            unit: item.unitChoices[0]?.unit ?? item.unit,
+                            stockQty: item.stockQty,
+                            units: item.unitChoices.slice(1).map((choice) => ({
+                              id: 0,
+                              unit: choice.unit,
+                              factor: choice.factor,
+                              priceCents: choice.priceCents,
+                              costCents: choice.costCents
+                            }))
+                          })}{' '}
+                          · 预警 {item.warningQty}
+                          {item.unitChoices[0]?.unit ?? item.unit}
                         </div>
                       </td>
                       <td>
@@ -612,7 +649,18 @@ export function PrescriptionEditPage(): React.JSX.Element {
                               })
                             }
                           />
-                          <span className="med-unit">{item.unit}</span>
+                          <select
+                            className="select"
+                            value={item.unit}
+                            data-testid={`med-unit-${item.drugId}`}
+                            onChange={(event) => updateItem(item.key, { unit: event.target.value })}
+                          >
+                            {item.unitChoices.map((choice) => (
+                              <option key={choice.unit} value={choice.unit}>
+                                {choice.unit}
+                              </option>
+                            ))}
+                          </select>
                         </div>
                       </td>
                       <td>
