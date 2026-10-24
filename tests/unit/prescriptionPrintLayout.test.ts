@@ -71,12 +71,11 @@ describe('prescription print layout', () => {
     expect(lastLineBottom).toBeLessThan(0.7)
   })
 
-  it('医师签名移动到用药区右下侧，不再占用底部医师栏', () => {
+  it('医师签名回到下方“医师”栏位置', () => {
     const footer = buildPrescriptionFooterFields(detail, true)
     expect(footer.some((field) => field.key === 'doctor')).toBe(false)
     const signature = buildPrescriptionSignatureField(detail, 4)
-    expect(signature.x).toBeGreaterThanOrEqual(0.6)
-    expect(signature.y).toBeGreaterThanOrEqual(0.42)
-    expect(signature.y).toBeLessThanOrEqual(0.72)
+    expect(signature.x).toBeCloseTo(0.675, 3)
+    expect(signature.y).toBeCloseTo(0.744, 3)
   })
 })

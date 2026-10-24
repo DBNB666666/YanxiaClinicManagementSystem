@@ -78,16 +78,13 @@ export function buildPrescriptionFooterFields(
 
 export function buildPrescriptionSignatureField(
   prescription: PrescriptionDetail,
-  lastPageLineCount: number
+  _lastPageLineCount: number
 ): PrintField {
-  const afterContent =
-    PRINT_CONTENT_LAYOUT.y + lastPageLineCount * PRINT_CONTENT_LAYOUT.lineHeight + 0.02
-  const y = Math.min(0.72, Math.max(0.35, afterContent))
   return {
     key: 'signature',
     text: prescription.doctor,
-    x: 0.66,
-    y,
+    x: 0.675,
+    y: 0.744,
     width: 0.28,
     size: 10
   }

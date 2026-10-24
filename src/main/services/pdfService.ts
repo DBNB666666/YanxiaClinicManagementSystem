@@ -156,7 +156,7 @@ export async function generatePrescriptionPdf(
       }
       if (signatureField && signature) {
         const maxWidth = signatureField.width * PAGE_WIDTH
-        const maxHeight = PAGE_HEIGHT * 0.16
+        const maxHeight = PAGE_HEIGHT * 0.09
         const scale = Math.min(maxWidth / signature.width, maxHeight / signature.height)
         const width = signature.width * scale
         const height = signature.height * scale

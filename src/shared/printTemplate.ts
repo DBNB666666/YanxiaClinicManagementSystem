@@ -123,7 +123,7 @@ export function buildPrescriptionHtml(
     line-height: 1.15; color: #111;
   }
   .signature-image {
-    position: absolute; display: block; height: auto; max-height: 16%;
+    position: absolute; display: block; height: auto; max-height: 9%;
     object-fit: contain; object-position: left top;
   }
   @media screen {
