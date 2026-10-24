@@ -200,10 +200,24 @@ export function PrescriptionListPage(): React.JSX.Element {
             return (
               <article
                 key={item.id}
-                className={`rx-card ${checked ? 'selected' : ''}`.trim()}
+                className={`rx-card rx-card-clickable ${checked ? 'selected' : ''}`.trim()}
                 data-testid={`rx-card-${item.id}`}
+                role="link"
+                tabIndex={0}
+                aria-label={`查看 ${item.patientName} 的处方详情`}
+                onClick={() => navigate(`/prescriptions/${item.id}`)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    navigate(`/prescriptions/${item.id}`)
+                  }
+                }}
               >
-                <label className="rx-card-check" aria-label={`选择 ${item.patientName}`}>
+                <label
+                  className="rx-card-check"
+                  aria-label={`选择 ${item.patientName}`}
+                  onClick={(event) => event.stopPropagation()}
+                >
                   <input
                     type="checkbox"
                     className="checkbox"
@@ -220,7 +234,7 @@ export function PrescriptionListPage(): React.JSX.Element {
                 <div className="rx-card-diagnosis">诊断：{item.diagnosis}</div>
                 <div className="rx-card-date">开具日期：{item.issueDate}</div>
                 <div className="rx-card-meds">用药：{item.medicationText || '—'}</div>
-                <div className="rx-card-actions">
+                <div className="rx-card-actions" onClick={(event) => event.stopPropagation()}>
                   <Button size="xs" variant="ghost" onClick={() => navigate(`/prescriptions/${item.id}/edit`)}>
                     编辑
                   </Button>
@@ -259,8 +273,20 @@ export function PrescriptionListPage(): React.JSX.Element {
             </thead>
             <tbody>
               {items.map((item) => (
-                <tr key={item.id} data-testid={`rx-row-${item.id}`}>
-                  <td>
+                <tr
+                  key={item.id}
+                  data-testid={`rx-row-${item.id}`}
+                  className="rx-row-clickable"
+                  tabIndex={0}
+                  onClick={() => navigate(`/prescriptions/${item.id}`)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      navigate(`/prescriptions/${item.id}`)
+                    }
+                  }}
+                >
+                  <td onClick={(event) => event.stopPropagation()}>
                     <input
                       type="checkbox"
                       className="checkbox"
@@ -273,7 +299,7 @@ export function PrescriptionListPage(): React.JSX.Element {
                   <td>{item.gender}</td>
                   <td>{item.age}</td>
                   <td>{item.issueDate}</td>
-                  <td className="actions">
+                  <td className="actions" onClick={(event) => event.stopPropagation()}>
                     <Button size="xs" variant="ghost" onClick={() => navigate(`/prescriptions/${item.id}/edit`)}>
                       编辑
                     </Button>

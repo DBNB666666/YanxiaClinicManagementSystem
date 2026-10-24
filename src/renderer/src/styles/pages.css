@@ -31,6 +31,17 @@
   background: var(--surface-alt);
 }
 
+.rx-card-clickable,
+.rx-row-clickable {
+  cursor: pointer;
+}
+
+.rx-card-clickable:focus-visible,
+.rx-row-clickable:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
 .rx-card.selected,
 .pharmacy-card.selected {
   border-color: var(--primary);
@@ -201,6 +212,27 @@
   margin: 0 0 14px;
   font-size: 16px;
   font-weight: 600;
+}
+
+.rp-detail {
+  min-height: 96px;
+  padding: 14px 16px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-control);
+  background: var(--surface-alt);
+  font-size: 14px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+
+.detail-timestamps {
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.detail-table-wrap {
+  border: 0;
+  box-shadow: none;
 }
 
 .stock-hero {

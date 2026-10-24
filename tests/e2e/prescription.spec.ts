@@ -19,6 +19,47 @@ test('处方列表、搜索与视图切换', async ({ page }) => {
   await expect(page.getByRole('cell', { name: '张秀兰', exact: true })).toBeVisible()
 })
 
+test('点击处方卡片进入详情页', async ({ page }) => {
+  await openApp(page)
+  await page.getByTestId('rx-card-1').click()
+  await page.waitForSelector('[data-testid="prescription-detail-page"]')
+  await expect(page.getByTestId('detail-patient-name')).toHaveText('张秀兰')
+  await expect(page.getByTestId('detail-rp')).toContainText('注意休息，低盐饮食。')
+  await expect(page.getByTestId('detail-medication-1')).toContainText('阿莫西林胶囊')
+  await expect(page.getByTestId('detail-total')).toHaveText('¥68.00')
+  await expect(page.getByTestId('detail-edit')).toBeVisible()
+  await expect(page.getByTestId('detail-print')).toBeVisible()
+  await expect(page.getByTestId('detail-delete')).toBeVisible()
+})
+
+test('点击处方列表行进入详情页', async ({ page }) => {
+  await openApp(page)
+  await page.getByTestId('view-list').click()
+  await page.getByTestId('rx-row-1').click()
+  await page.waitForSelector('[data-testid="prescription-detail-page"]')
+  await expect(page.getByTestId('detail-patient-name')).toHaveText('张秀兰')
+})
+
+test('详情页提供编辑、打印与删除操作', async ({ page, request }) => {
+  await openApp(page, '/#/prescriptions/1', '[data-testid="prescription-detail-page"]')
+
+  await page.getByTestId('detail-edit').click()
+  await page.waitForSelector('[data-testid="prescription-edit-page"]')
+
+  await openApp(page, '/#/prescriptions/1', '[data-testid="prescription-detail-page"]')
+  await page.getByTestId('detail-print').click()
+  await page.waitForSelector('[data-testid="print-page"]')
+
+  await openApp(page, '/#/prescriptions/1', '[data-testid="prescription-detail-page"]')
+  await page.getByTestId('detail-delete').click()
+  await page.getByTestId('delete-prescription-detail-dialog-confirm').click()
+  await page.waitForSelector('[data-testid="prescription-page"]')
+  const list = await apiCall<{ total: number }>(request, 'prescriptions', 'list', [
+    { page: 1, pageSize: 20 }
+  ])
+  expect(list.total).toBe(0)
+})
+
 test('编辑处方数量按差额扣库存', async ({ page, request }) => {
   await openApp(page)
   await page.getByTestId('rx-card-1').getByText('编辑').click()

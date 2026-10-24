@@ -4,6 +4,7 @@ import path from 'node:path'
 import { SqliteStore } from '../src/main/db/store'
 import { ClinicService } from '../src/main/services/clinicService'
 import { generatePrescriptionPdf } from '../src/main/services/pdfService'
+import { todayIso } from '../src/shared/date'
 import { fail, ok } from '../src/shared/result'
 import type { PrescriptionInput } from '../src/shared/types/models'
 
@@ -69,7 +70,7 @@ function seedDefault(current: ClinicService): void {
     gender: '女',
     age: '62',
     diagnosis: '高血压、失眠',
-    issueDate: '2026-10-23',
+    issueDate: todayIso(),
     rp: '注意休息，低盐饮食。',
     doctor: '王医生',
     items: [

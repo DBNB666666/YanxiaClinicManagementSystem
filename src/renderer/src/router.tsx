@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from './app/AppShell'
 import { PrescriptionListPage } from './pages/prescriptions/PrescriptionListPage'
+import { PrescriptionDetailPage } from './pages/prescriptions/PrescriptionDetailPage'
 import { PrescriptionEditPage } from './pages/prescriptions/PrescriptionEditPage'
 import { PrescriptionPrintPage } from './pages/prescriptions/PrescriptionPrintPage'
 import { PharmacyListPage } from './pages/pharmacy/PharmacyListPage'
@@ -15,6 +16,7 @@ export function AppRoutes(): React.JSX.Element {
         <Route index element={<Navigate to="/prescriptions" replace />} />
         <Route path="prescriptions" element={<PrescriptionListPage />} />
         <Route path="prescriptions/new" element={<PrescriptionEditPage />} />
+        <Route path="prescriptions/:id" element={<PrescriptionDetailPage />} />
         <Route path="prescriptions/:id/edit" element={<PrescriptionEditPage />} />
         <Route path="prescriptions/print" element={<PrescriptionPrintPage />} />
         <Route path="pharmacy" element={<PharmacyListPage />} />
