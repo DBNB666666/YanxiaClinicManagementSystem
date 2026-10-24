@@ -88,6 +88,7 @@ export function PrescriptionEditPage(): React.JSX.Element {
   const { settings, setLastDoctor, setSignatureImage } = useSettings()
   const { showToast } = useToast()
   const editId = id ? Number(id) : null
+  const draftKey = `yanxia:rx-draft:${editId ?? 'new'}`
   const [form, setForm] = useState<FormState>(emptyForm(settings.lastDoctor))
   const [items, setItems] = useState<EditItem[]>([])
   const [drugs, setDrugs] = useState<Drug[]>([])
@@ -167,7 +168,26 @@ export function PrescriptionEditPage(): React.JSX.Element {
         } else {
           setForm(emptyForm(settings.lastDoctor))
         }
-        setDirty(false)
+        let restoredDraft = false
+        try {
+          const rawDraft = sessionStorage.getItem(draftKey)
+          if (rawDraft) {
+            const draft = JSON.parse(rawDraft) as {
+              form: FormState
+              items: EditItem[]
+              manualAmount: number | null
+              manualInput: string
+            }
+            setForm(draft.form)
+            setItems(draft.items)
+            setManualAmount(draft.manualAmount)
+            setManualInput(draft.manualInput)
+            restoredDraft = true
+          }
+        } catch {
+          // 草稿损坏时使用已保存数据
+        }
+        setDirty(restoredDraft)
       } catch (cause) {
         if (!cancelled) setError((cause as Error).message)
       } finally {
@@ -196,6 +216,18 @@ export function PrescriptionEditPage(): React.JSX.Element {
       setForm((current) => ({ ...current, doctor: settings.lastDoctor }))
     }
   }, [settings.lastDoctor, editId, dirty, form.doctor])
+
+  useEffect(() => {
+    if (!dirty) return
+    try {
+      sessionStorage.setItem(
+        draftKey,
+        JSON.stringify({ form, items, manualAmount, manualInput })
+      )
+    } catch {
+      // 草稿写入失败不影响继续编辑
+    }
+  }, [dirty, draftKey, form, items, manualAmount, manualInput])
 
   const automaticAmount = useMemo(
     () => items.reduce((sum, item) => sum + item.amountCents, 0),
@@ -308,6 +340,11 @@ export function PrescriptionEditPage(): React.JSX.Element {
         await setLastDoctor(form.doctor.trim())
       } catch {
         // 偏好保存失败不影响处方已保存的事实
+      }
+      try {
+        sessionStorage.removeItem(draftKey)
+      } catch {
+        // ignore
       }
       setDirty(false)
       showToast(editId ? '处方已保存，库存已扣减' : '处方已保存')

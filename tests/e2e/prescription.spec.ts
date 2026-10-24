@@ -60,6 +60,20 @@ test('详情页提供编辑、打印与删除操作', async ({ page, request }) 
   expect(list.total).toBe(0)
 })
 
+test('切换板块后回到原编辑页且未保存内容不丢', async ({ page }) => {
+  await openApp(page)
+  await page.getByTestId('rx-card-1').getByText('编辑').click()
+  await page.waitForSelector('[data-testid="prescription-edit-page"]')
+  await page.getByTestId('rx-patient-name').fill('草稿患者')
+  await page.waitForTimeout(150)
+
+  await page.getByRole('link', { name: '药房' }).click()
+  await page.waitForSelector('[data-testid="pharmacy-page"]')
+  await page.getByRole('link', { name: '处方' }).click()
+  await page.waitForSelector('[data-testid="prescription-edit-page"]')
+  await expect(page.getByTestId('rx-patient-name')).toHaveValue('草稿患者')
+})
+
 test('编辑处方数量按差额扣库存', async ({ page, request }) => {
   await openApp(page)
   await page.getByTestId('rx-card-1').getByText('编辑').click()
