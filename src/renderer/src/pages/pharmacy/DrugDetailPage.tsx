@@ -123,7 +123,6 @@ export function DrugDetailPage(): React.JSX.Element {
               <span className={`stock-number ${low ? 'warning-text' : ''}`.trim()}>
                 {formatDrugStock(drug)}
               </span>
-              <span className="stock-unit">{drug.unit}</span>
             </div>
             <div className="stock-sub">
               预警值：{drug.warningQty} {drug.unit} · 入库日期：{drug.inboundDate}

@@ -66,6 +66,7 @@ test('新增药品、进货与停用', async ({ page, request }) => {
   await waitForToast(page, '已进货')
 
   await expect(page.locator('.stock-number')).toHaveText('8 瓶')
+  await expect(page.locator('.stock-unit')).toHaveCount(0)
   const drug = await apiCall<{ stockQty: number; costCents: number }>(request, 'drugs', 'get', [
     5
   ])
