@@ -4,7 +4,8 @@ import {
   buildPrescriptionFooterFields,
   buildPrescriptionHeaderFields,
   buildPrescriptionSignatureField,
-  getPrescriptionPages
+  getPrescriptionPages,
+  type SignatureLayout
 } from './prescriptionPrintLayout'
 
 function escapeHtml(value: string): string {
@@ -19,6 +20,8 @@ function escapeHtml(value: string): string {
 export interface PrintTemplateOptions {
   templateUrl?: string
   signatureImage?: string
+  signatureLayout?: SignatureLayout
+  hideSignature?: boolean
 }
 
 export function buildPrescriptionHtml(
@@ -35,16 +38,20 @@ export function buildPrescriptionHtml(
           ...buildPrescriptionFooterFields(prescription, isLastPage)
         ]
         const signatureField = isLastPage
-          ? buildPrescriptionSignatureField(prescription, lines.length)
+          ? buildPrescriptionSignatureField(
+              prescription,
+              lines.length,
+              options.signatureLayout
+            )
           : null
         let signatureHtml = ''
-        if (signatureField) {
+        if (signatureField && !options.hideSignature) {
           if (options.signatureImage) {
             signatureHtml = `<img class="signature-image" src="${escapeHtml(
               options.signatureImage
             )}" alt="医师签名" style="left:${(signatureField.x * 100).toFixed(3)}%;top:${(
               signatureField.y * 100
-            ).toFixed(3)}%;max-width:${(signatureField.width * 100).toFixed(3)}%;" />`
+            ).toFixed(3)}%;width:${(signatureField.width * 100).toFixed(3)}%;" />`
           } else {
             fields.push(signatureField)
           }
@@ -123,7 +130,7 @@ export function buildPrescriptionHtml(
     line-height: 1.15; color: #111;
   }
   .signature-image {
-    position: absolute; display: block; height: auto; max-height: 9%;
+    position: absolute; display: block; height: auto; max-height: 20%;
     object-fit: contain; object-position: left top;
   }
   @media screen {

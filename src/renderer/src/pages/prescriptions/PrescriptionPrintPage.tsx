@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Download, Printer } from 'lucide-react'
 import type { PrescriptionDetail } from '@shared/types/models'
 import { buildPrescriptionHtml } from '@shared/printTemplate'
 import {
   PRINT_PAGE_HEIGHT_PX,
+  PRINT_PAGE_WIDTH_PX,
   countPrescriptionPages
 } from '@shared/prescriptionPrintLayout'
 import templateUrl from '../../assets/prescription-template.jpg'
@@ -15,7 +16,7 @@ import { useToast } from '../../context/ToastProvider'
 export function PrescriptionPrintPage(): React.JSX.Element {
   const [params] = useSearchParams()
   const navigate = useNavigate()
-  const { settings } = useSettings()
+  const { settings, setSignatureLayout } = useSettings()
   const { showToast } = useToast()
   const [details, setDetails] = useState<PrescriptionDetail[]>([])
   const [loading, setLoading] = useState(true)
@@ -56,16 +57,74 @@ export function PrescriptionPrintPage(): React.JSX.Element {
   }, [ids])
 
   const pageCount = useMemo(() => countPrescriptionPages(details), [details])
+  const [signatureLayout, setLocalSignatureLayout] = useState({
+    x: settings.signatureX,
+    y: settings.signatureY,
+    width: settings.signatureWidth
+  })
+  const layoutRef = useRef(signatureLayout)
+
+  useEffect(() => {
+    const next = {
+      x: settings.signatureX,
+      y: settings.signatureY,
+      width: settings.signatureWidth
+    }
+    layoutRef.current = next
+    setLocalSignatureLayout(next)
+  }, [settings.signatureX, settings.signatureY, settings.signatureWidth])
+
+  const canEditSignature = details.length === 1 && Boolean(settings.signatureImage)
   const html = useMemo(
     () =>
       details.length
         ? buildPrescriptionHtml(details, {
             templateUrl,
-            signatureImage: settings.signatureImage
+            signatureImage: settings.signatureImage,
+            signatureLayout,
+            hideSignature: canEditSignature
           })
         : '',
-    [details, settings.signatureImage]
+    [details, settings.signatureImage, signatureLayout, canEditSignature]
   )
+
+  const beginSignatureGesture = (
+    mode: 'move' | 'resize'
+  ): ((event: ReactPointerEvent) => void) => {
+    return (event) => {
+      event.preventDefault()
+      event.stopPropagation()
+      const start = {
+        mode,
+        clientX: event.clientX,
+        clientY: event.clientY,
+        ...layoutRef.current
+      }
+      const onMove = (moveEvent: PointerEvent): void => {
+        const dx = (moveEvent.clientX - start.clientX) / PRINT_PAGE_WIDTH_PX
+        const dy = (moveEvent.clientY - start.clientY) / PRINT_PAGE_HEIGHT_PX
+        let next = { ...layoutRef.current }
+        if (mode === 'move') {
+          next.x = Math.min(1 - start.width, Math.max(0, start.x + dx))
+          next.y = Math.min(0.95, Math.max(0, start.y + dy))
+        } else {
+          next.width = Math.min(0.6, Math.max(0.05, start.width + dx))
+          next.x = Math.min(next.x, 1 - next.width)
+        }
+        layoutRef.current = next
+        setLocalSignatureLayout(next)
+      }
+      const onUp = (): void => {
+        window.removeEventListener('pointermove', onMove)
+        window.removeEventListener('pointerup', onUp)
+        void setSignatureLayout(layoutRef.current).catch((cause: Error) =>
+          showToast(cause.message, 'error')
+        )
+      }
+      window.addEventListener('pointermove', onMove)
+      window.addEventListener('pointerup', onUp)
+    }
+  }
 
   const run = async (action: 'print' | 'export'): Promise<void> => {
     if (!ids.length) return
@@ -124,12 +183,41 @@ export function PrescriptionPrintPage(): React.JSX.Element {
         ) : details.length === 0 ? (
           <EmptyState title="没有可预览的处方" description="请从处方列表选择要打印的处方。" />
         ) : (
-          <iframe
-            className="print-frame"
-            title="处方打印预览"
-            srcDoc={html}
-            style={{ height: Math.max(pageCount, 1) * PRINT_PAGE_HEIGHT_PX }}
-          />
+          <div
+            className="print-canvas"
+            style={{
+              width: PRINT_PAGE_WIDTH_PX,
+              height: Math.max(pageCount, 1) * PRINT_PAGE_HEIGHT_PX
+            }}
+          >
+            <iframe
+              className="print-frame"
+              title="处方打印预览"
+              srcDoc={html}
+              style={{ height: Math.max(pageCount, 1) * PRINT_PAGE_HEIGHT_PX }}
+            />
+            {canEditSignature ? (
+              <div
+                className="signature-editor"
+                data-testid="signature-drag"
+                style={{
+                  left: `${signatureLayout.x * 100}%`,
+                  top: `${((pageCount - 1 + signatureLayout.y) / Math.max(pageCount, 1)) * 100}%`,
+                  width: `${signatureLayout.width * 100}%`
+                }}
+                onPointerDown={beginSignatureGesture('move')}
+                title="拖动调整签名位置"
+              >
+                <img src={settings.signatureImage} alt="拖动医师签名" draggable={false} />
+                <span
+                  className="signature-resize-handle"
+                  data-testid="signature-resize"
+                  onPointerDown={beginSignatureGesture('resize')}
+                  title="拖动等比缩放"
+                />
+              </div>
+            ) : null}
+          </div>
         )}
       </div>
     </div>

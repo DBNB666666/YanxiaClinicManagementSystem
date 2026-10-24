@@ -1,4 +1,4 @@
-﻿import http from 'node:http'
+import http from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
 import { SqliteStore } from '../src/main/db/store'
@@ -101,15 +101,21 @@ async function exportPdf(ids: number[]): Promise<{ path: string; pageCount: numb
       ? `处方_${details[0].patientName}_${details[0].issueDate}.pdf`
       : `处方导出_2026-10-23_共${details.length}张.pdf`
   const output = path.join(exportDir, fileName.replace(/[\\/:*?"<>|]/g, '_'))
+  const settings = service.getSettings()
   const result = await generatePrescriptionPdf(details, output, {
-    signatureImage: service.getSettings().signatureImage
+    signatureImage: settings.signatureImage,
+    signatureLayout: {
+      x: settings.signatureX,
+      y: settings.signatureY,
+      width: settings.signatureWidth
+    }
   })
   return { path: result.path, pageCount: result.pageCount }
 }
 
 async function dispatch(ns: string, method: string, args: unknown[]): Promise<unknown> {
   if (ns === 'app' && method === 'getInfo') {
-    return { version: '0.3.0', dataDir: dataRoot, lastBackupAt: null }
+    return { version: '0.4.0', dataDir: dataRoot, lastBackupAt: null }
   }
   if (ns === 'settings' && method === 'get') return service.getSettings()
   if (ns === 'settings' && method === 'set') return service.setSettings(args[0] as never)

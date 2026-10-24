@@ -26,9 +26,32 @@ test('上传签名图、保存到用户数据并在打印预览中使用', async
   await expect(page.getByTestId('signature-preview')).toBeVisible()
 
   await openApp(page, '/#/prescriptions/print?ids=1', '[data-testid="print-page"]')
-  const signature = page.frameLocator('.print-frame').locator('img.signature-image')
-  await expect(signature).toHaveCount(1)
+  const signature = page.getByTestId('signature-drag')
+  await expect(signature).toBeVisible()
   await expect
-    .poll(async () => signature.evaluate((element: HTMLImageElement) => element.naturalWidth))
+    .poll(async () => signature.locator('img').evaluate((element: HTMLImageElement) => element.naturalWidth))
     .toBeGreaterThan(0)
+
+  await signature.scrollIntoViewIfNeeded()
+  const box = await signature.boundingBox()
+  expect(box).not.toBeNull()
+  await page.mouse.move(box!.x + box!.width / 2, box!.y + Math.max(1, box!.height / 2))
+  await page.mouse.down()
+  await page.mouse.move(box!.x + box!.width / 2 + 40, box!.y + Math.max(1, box!.height / 2) + 20)
+  await page.mouse.up()
+  await expect
+    .poll(async () => (await apiCall<{ signatureX: number }>(request, 'settings', 'get')).signatureX)
+    .toBeGreaterThan(0.675)
+
+  const handle = page.getByTestId('signature-resize')
+  await handle.scrollIntoViewIfNeeded()
+  const handleBox = await handle.boundingBox()
+  expect(handleBox).not.toBeNull()
+  await page.mouse.move(handleBox!.x + 4, handleBox!.y + 4)
+  await page.mouse.down()
+  await page.mouse.move(handleBox!.x + 34, handleBox!.y + 4)
+  await page.mouse.up()
+  await expect
+    .poll(async () => (await apiCall<{ signatureWidth: number }>(request, 'settings', 'get')).signatureWidth)
+    .toBeGreaterThan(0.28)
 })

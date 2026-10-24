@@ -704,6 +704,42 @@
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
 }
 
+.print-canvas {
+  position: relative;
+  margin: 0 auto;
+}
+
+.signature-editor {
+  position: absolute;
+  z-index: 10;
+  min-height: 24px;
+  cursor: move;
+  touch-action: none;
+  user-select: none;
+  outline: 1px dashed color-mix(in srgb, var(--primary) 45%, transparent);
+  outline-offset: 2px;
+}
+
+.signature-editor img {
+  display: block;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+}
+
+.signature-resize-handle {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #fff;
+  border-radius: 2px;
+  background: var(--primary);
+  cursor: nwse-resize;
+  touch-action: none;
+}
+
 .notification-item {
   display: flex;
   gap: 10px;

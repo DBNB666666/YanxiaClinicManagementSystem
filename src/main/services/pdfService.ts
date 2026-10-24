@@ -12,6 +12,7 @@ import {
   buildPrescriptionHeaderFields,
   buildPrescriptionSignatureField,
   getPrescriptionPages,
+  type SignatureLayout,
   type PrintField
 } from '../../shared/prescriptionPrintLayout'
 
@@ -106,6 +107,7 @@ export interface PdfResult {
 
 export interface PrescriptionPdfOptions {
   signatureImage?: string
+  signatureLayout?: SignatureLayout
 }
 
 async function embedSignature(
@@ -149,14 +151,18 @@ export async function generatePrescriptionPdf(
         ...buildPrescriptionFooterFields(prescription, isLastPage)
       ]
       const signatureField = isLastPage
-        ? buildPrescriptionSignatureField(prescription, lines.length)
+        ? buildPrescriptionSignatureField(
+            prescription,
+            lines.length,
+            options.signatureLayout
+          )
         : null
       if (signatureField && !signature) {
         fields.push(signatureField)
       }
       if (signatureField && signature) {
         const maxWidth = signatureField.width * PAGE_WIDTH
-        const maxHeight = PAGE_HEIGHT * 0.09
+        const maxHeight = PAGE_HEIGHT * 0.18
         const scale = Math.min(maxWidth / signature.width, maxHeight / signature.height)
         const width = signature.width * scale
         const height = signature.height * scale

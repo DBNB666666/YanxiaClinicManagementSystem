@@ -132,7 +132,10 @@ const DEFAULT_SETTINGS: Settings = {
   lastDoctor: '',
   viewModes: { prescriptions: 'card', pharmacy: 'card' },
   lastExportDir: '',
-  signatureImage: ''
+  signatureImage: '',
+  signatureX: 0.675,
+  signatureY: 0.744,
+  signatureWidth: 0.28
 }
 
 function mapDrugUnit(row: DrugUnitRow): DrugUnit {
@@ -1103,6 +1106,9 @@ export class ClinicService {
         if (row.key === 'viewModes') result.viewModes = { ...result.viewModes, ...value }
         if (row.key === 'lastExportDir') result.lastExportDir = value
         if (row.key === 'signatureImage') result.signatureImage = value
+        if (row.key === 'signatureX') result.signatureX = value
+        if (row.key === 'signatureY') result.signatureY = value
+        if (row.key === 'signatureWidth') result.signatureWidth = value
       } catch {
         // ignore malformed setting
       }
@@ -1119,6 +1125,9 @@ export class ClinicService {
     if (parsed.viewModes !== undefined) entries.push(['viewModes', parsed.viewModes])
     if (parsed.lastExportDir !== undefined) entries.push(['lastExportDir', parsed.lastExportDir])
     if (parsed.signatureImage !== undefined) entries.push(['signatureImage', parsed.signatureImage])
+    if (parsed.signatureX !== undefined) entries.push(['signatureX', parsed.signatureX])
+    if (parsed.signatureY !== undefined) entries.push(['signatureY', parsed.signatureY])
+    if (parsed.signatureWidth !== undefined) entries.push(['signatureWidth', parsed.signatureWidth])
     for (const [key, value] of entries) {
       this.store.run(
         `INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)

@@ -77,16 +77,23 @@ export function buildPrescriptionFooterFields(
   return fields
 }
 
+export interface SignatureLayout {
+  x: number
+  y: number
+  width: number
+}
+
 export function buildPrescriptionSignatureField(
   prescription: PrescriptionDetail,
-  _lastPageLineCount: number
+  _lastPageLineCount: number,
+  layout?: SignatureLayout
 ): PrintField {
   return {
     key: 'signature',
     text: prescription.doctor,
-    x: 0.675,
-    y: 0.744,
-    width: 0.28,
+    x: layout?.x ?? 0.675,
+    y: layout?.y ?? 0.744,
+    width: layout?.width ?? 0.28,
     size: 10
   }
 }

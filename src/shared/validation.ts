@@ -84,7 +84,10 @@ export const settingsPatchSchema = z
         (value) => value === '' || /^data:image\/(png|jpeg);base64,/i.test(value),
         '签名图必须是 PNG/JPEG'
       )
-      .optional()
+      .optional(),
+    signatureX: z.number().min(0).max(1).optional(),
+    signatureY: z.number().min(0).max(1).optional(),
+    signatureWidth: z.number().min(0.05).max(0.8).optional()
   })
   .partial()
 

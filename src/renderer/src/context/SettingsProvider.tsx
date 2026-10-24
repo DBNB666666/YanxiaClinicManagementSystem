@@ -14,7 +14,10 @@ const DEFAULT_SETTINGS: Settings = {
   lastDoctor: '',
   viewModes: { prescriptions: 'card', pharmacy: 'card' },
   lastExportDir: '',
-  signatureImage: ''
+  signatureImage: '',
+  signatureX: 0.675,
+  signatureY: 0.744,
+  signatureWidth: 0.28
 }
 
 interface SettingsContextValue {
@@ -23,6 +26,7 @@ interface SettingsContextValue {
   setTheme: (theme: Theme) => Promise<void>
   setLastDoctor: (doctor: string) => Promise<void>
   setSignatureImage: (signatureImage: string) => Promise<void>
+  setSignatureLayout: (layout: { x: number; y: number; width: number }) => Promise<void>
   setViewMode: (module: 'prescriptions' | 'pharmacy', mode: ViewMode) => Promise<void>
   refresh: () => Promise<void>
 }
@@ -83,6 +87,23 @@ export function SettingsProvider({ children }: { children: ReactNode }): React.J
     await window.api.settings.set({ signatureImage })
   }, [])
 
+  const setSignatureLayout = useCallback(
+    async (layout: { x: number; y: number; width: number }) => {
+      setSettings((current) => ({
+        ...current,
+        signatureX: layout.x,
+        signatureY: layout.y,
+        signatureWidth: layout.width
+      }))
+      await window.api.settings.set({
+        signatureX: layout.x,
+        signatureY: layout.y,
+        signatureWidth: layout.width
+      })
+    },
+    []
+  )
+
   const setViewMode = useCallback(
     async (module: 'prescriptions' | 'pharmacy', mode: ViewMode) => {
       setSettings((current) => ({
@@ -104,8 +125,17 @@ export function SettingsProvider({ children }: { children: ReactNode }): React.J
   )
 
   const value = useMemo(
-    () => ({ settings, loading, setTheme, setLastDoctor, setSignatureImage, setViewMode, refresh }),
-    [settings, loading, setTheme, setLastDoctor, setSignatureImage, setViewMode, refresh]
+    () => ({
+      settings,
+      loading,
+      setTheme,
+      setLastDoctor,
+      setSignatureImage,
+      setSignatureLayout,
+      setViewMode,
+      refresh
+    }),
+    [settings, loading, setTheme, setLastDoctor, setSignatureImage, setSignatureLayout, setViewMode, refresh]
   )
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>
