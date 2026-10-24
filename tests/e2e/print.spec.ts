@@ -36,6 +36,7 @@ test('图片模板打印预览与正32开 PDF 导出', async ({ page, request })
   await expect(frame.getByText('张秀兰').first()).toBeVisible()
   await expect(frame.getByText('燕霞诊所').first()).toBeVisible()
   await expect(frame.getByText('48.00').first()).toBeVisible()
+  await expect(frame.getByText('用法：口服').first()).toBeVisible()
   const image = frame.locator('img.template-bg')
   await expect(image).toHaveCount(1)
   await expect

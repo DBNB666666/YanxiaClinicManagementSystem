@@ -34,6 +34,29 @@ describe('prescription print layout', () => {
     expect(age!.y).toBeGreaterThanOrEqual(0.128)
   })
 
+  it('打印用药按规范分为药名/数量行与用法行', () => {
+    const lines = buildPrescriptionContentLines({
+      ...detail,
+      items: [
+        {
+          id: 1,
+          prescriptionId: 1,
+          drugId: 1,
+          drugName: '阿莫西林胶囊',
+          unit: '盒',
+          qty: 2,
+          usage: '口服',
+          frequency: '每日1次',
+          unitPriceCents: 1800,
+          unitCostCents: 800,
+          amountCents: 3600
+        }
+      ]
+    } as PrescriptionDetail)
+    expect(lines).toEqual(['    阿莫西林胶囊    2盒', '        用法：口服    每日1次'])
+    expect(lines.join('')).not.toContain('1.')
+  })
+
   it('打印内容不再输出 Rp 正文/嘱托', () => {
     const lines = buildPrescriptionContentLines({ ...detail, rp: '注意休息，低盐饮食。' })
     expect(lines.join('')).not.toContain('嘱托')

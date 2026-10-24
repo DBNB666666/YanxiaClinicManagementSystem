@@ -86,10 +86,10 @@ export function buildPrescriptionFooterFields(
 
 export function buildPrescriptionContentLines(prescription: PrescriptionDetail): string[] {
   const lines: string[] = []
-  prescription.items.forEach((item, index) => {
-    const usage = [item.usage, item.frequency].filter(Boolean).join(' / ')
-    const line = `${index + 1}. ${item.drugName}  ${item.qty}${item.unit}${usage ? `  ${usage}` : ''}`
-    lines.push(...wrapByChars(line))
+  prescription.items.forEach((item) => {
+    const nameLine = `    ${item.drugName}    ${item.qty}${item.unit}`
+    const usageLine = `        用法：${item.usage || '—'}${item.frequency ? `    ${item.frequency}` : ''}`
+    lines.push(...wrapByChars(nameLine), ...wrapByChars(usageLine))
   })
   return lines
 }
