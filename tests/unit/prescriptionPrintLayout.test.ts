@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import type { PrescriptionDetail } from '../../src/shared/types/models'
-import { buildPrescriptionHeaderFields } from '../../src/shared/prescriptionPrintLayout'
+import {
+  PRINT_CONTENT_LAYOUT,
+  PRINT_CONTENT_MAX_LINES,
+  buildPrescriptionHeaderFields
+} from '../../src/shared/prescriptionPrintLayout'
 
 const detail = {
   id: 1,
@@ -26,5 +30,12 @@ describe('prescription print layout', () => {
     expect(age).toBeDefined()
     expect(age!.x).toBeGreaterThanOrEqual(0.7)
     expect(age!.y).toBeGreaterThanOrEqual(0.128)
+  })
+
+  it('Rp 用药内容整体位于 Rp 标题下方且不压到底部费用区', () => {
+    expect(PRINT_CONTENT_LAYOUT.y).toBeGreaterThanOrEqual(0.31)
+    const lastLineBottom =
+      PRINT_CONTENT_LAYOUT.y + (PRINT_CONTENT_MAX_LINES - 1) * PRINT_CONTENT_LAYOUT.lineHeight
+    expect(lastLineBottom).toBeLessThan(0.7)
   })
 })

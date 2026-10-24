@@ -9,7 +9,7 @@ export const PRINT_CONTENT_MAX_CHARS = 30
 export const PRINT_CONTENT_MAX_LINES = 15
 export const PRINT_CONTENT_LAYOUT = {
   x: 0.1,
-  y: 0.3,
+  y: 0.315,
   width: 0.82,
   lineHeight: 0.0245,
   fontSize: 9
