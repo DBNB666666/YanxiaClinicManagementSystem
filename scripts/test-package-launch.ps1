@@ -5,7 +5,7 @@
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 if (-not $ZipPath) {
-  $ZipPath = Join-Path $root "release\YanxiaClinicManagementSystem-0.1.0-win-x64.zip"
+  $ZipPath = Join-Path $root "release\YanxiaClinicManagementSystem-0.1.1-win-x64.zip"
 }
 if (-not (Test-Path -LiteralPath $ZipPath)) {
   throw "找不到安装包：$ZipPath。请先运行 npm run package:win。"

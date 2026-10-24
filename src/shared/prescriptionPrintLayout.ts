@@ -40,7 +40,7 @@ export function buildPrescriptionHeaderFields(prescription: PrescriptionDetail):
   return [
     { key: 'name', text: prescription.patientName, x: 0.205, y: 0.124, width: 0.20, size: 10 },
     { key: 'gender', text: prescription.gender, x: 0.49, y: 0.124, width: 0.08, size: 10 },
-    { key: 'age', text: prescription.age, x: 0.655, y: 0.124, width: 0.16, size: 10 },
+    { key: 'age', text: prescription.age, x: 0.72, y: 0.13, width: 0.16, size: 10 },
     { key: 'diagnosis', text: prescription.diagnosis, x: 0.245, y: 0.195, width: 0.69, size: 10 },
     { key: 'year', text: date.year, x: 0.255, y: 0.227, width: 0.14, size: 9 },
     { key: 'month', text: date.month, x: 0.505, y: 0.227, width: 0.07, size: 9 },
