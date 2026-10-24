@@ -5,6 +5,7 @@ import type { Drug, Gender, PrescriptionInput, PrescriptionItem } from '@shared/
 import { isApiErrorCode } from '@shared/apiError'
 import { centsToInput, formatCents, toCents } from '@shared/money'
 import { todayIso } from '@shared/date'
+import { mergeUsage } from '@shared/prescriptionUsage'
 import {
   Button,
   ConfirmDialog,
@@ -71,8 +72,8 @@ function mapItem(item: PrescriptionItem, drugs: Drug[]): EditItem {
     drugName: item.drugName,
     unit: item.unit,
     qty: item.qty,
-    usage: item.usage,
-    frequency: item.frequency,
+    usage: mergeUsage(item.usage, item.frequency),
+    frequency: '',
     unitPriceCents: item.unitPriceCents,
     unitCostCents: item.unitCostCents,
     amountCents: item.amountCents,
@@ -290,7 +291,7 @@ export function PrescriptionEditPage(): React.JSX.Element {
       drugId: item.drugId,
       qty: item.qty,
       usage: item.usage,
-      frequency: item.frequency
+      frequency: ''
     })),
     injectionFeeCents,
     manualDrugAmountCents: manualAmount
@@ -543,8 +544,7 @@ export function PrescriptionEditPage(): React.JSX.Element {
                   <tr>
                     <th style={{ width: '30%' }}>药品</th>
                     <th style={{ width: '15%' }}>数量</th>
-                    <th style={{ width: '18%' }}>服用方式</th>
-                    <th style={{ width: '18%' }}>服用频率</th>
+                    <th style={{ width: '41%' }}>用法</th>
                     <th style={{ width: '12%' }} className="right">
                       金额
                     </th>
@@ -583,19 +583,9 @@ export function PrescriptionEditPage(): React.JSX.Element {
                           className="input"
                           list="usage-options"
                           value={item.usage}
-                          placeholder="如口服"
+                          placeholder="如：口服，每日3次"
                           data-testid={`med-usage-${item.drugId}`}
                           onChange={(event) => updateItem(item.key, { usage: event.target.value })}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          className="input"
-                          list="frequency-options"
-                          value={item.frequency}
-                          placeholder="如每日3次"
-                          data-testid={`med-frequency-${item.drugId}`}
-                          onChange={(event) => updateItem(item.key, { frequency: event.target.value })}
                         />
                       </td>
                       <td className="right money">{formatCents(item.amountCents)}</td>
@@ -611,12 +601,7 @@ export function PrescriptionEditPage(): React.JSX.Element {
             )}
 
             <datalist id="usage-options">
-              {USAGE_OPTIONS.map((option) => (
-                <option key={option} value={option} />
-              ))}
-            </datalist>
-            <datalist id="frequency-options">
-              {FREQUENCY_OPTIONS.map((option) => (
+              {[...USAGE_OPTIONS, ...FREQUENCY_OPTIONS].map((option) => (
                 <option key={option} value={option} />
               ))}
             </datalist>

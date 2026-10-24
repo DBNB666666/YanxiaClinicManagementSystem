@@ -97,8 +97,8 @@ test('新建处方并从药房添加用药', async ({ page, request }) => {
   await page.getByTestId('drug-option-1').click()
   await page.getByTestId('confirm-add-medications').click()
   await expect(page.getByTestId('medication-table')).toBeVisible()
-  await page.getByTestId('med-usage-1').fill('口服')
-  await page.getByTestId('med-frequency-1').fill('每日3次')
+  await page.getByTestId('med-usage-1').fill('口服，每日3次')
+  await expect(page.getByTestId('med-frequency-1')).toHaveCount(0)
   await page.getByTestId('save-prescription').click()
 
   await page.waitForSelector('[data-testid="prescription-page"]')

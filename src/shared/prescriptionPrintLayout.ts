@@ -1,5 +1,6 @@
 import type { PrescriptionDetail } from './types/models'
 import { formatCents } from './money'
+import { mergeUsage } from './prescriptionUsage'
 
 export const PRINT_PAGE_WIDTH_MM = 130
 export const PRINT_PAGE_HEIGHT_MM = 190
@@ -94,7 +95,7 @@ export function buildPrescriptionContentLines(prescription: PrescriptionDetail):
   const lines: string[] = []
   prescription.items.forEach((item) => {
     const nameLine = `    ${item.drugName}    ${item.qty}${item.unit}`
-    const usageLine = `        用法：${item.usage || '—'}${item.frequency ? `    ${item.frequency}` : ''}`
+    const usageLine = `        用法：${mergeUsage(item.usage, item.frequency) || '—'}`
     lines.push(...wrapByChars(nameLine), ...wrapByChars(usageLine))
   })
   return lines

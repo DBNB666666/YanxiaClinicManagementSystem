@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Pencil, Printer, Trash2 } from 'lucide-react'
 import { formatCents, formatProfit } from '@shared/money'
 import { formatDateTime } from '@shared/date'
+import { mergeUsage } from '@shared/prescriptionUsage'
 import {
   Button,
   ConfirmDialog,
@@ -151,7 +152,6 @@ export function PrescriptionDetailPage(): React.JSX.Element {
                       <th>药品</th>
                       <th className="num">数量</th>
                       <th>用法</th>
-                      <th>频次</th>
                       <th className="num">单价</th>
                       <th className="num">金额</th>
                     </tr>
@@ -166,8 +166,7 @@ export function PrescriptionDetailPage(): React.JSX.Element {
                         <td className="num">
                           {item.qty} {item.unit}
                         </td>
-                        <td>{item.usage || '—'}</td>
-                        <td>{item.frequency || '—'}</td>
+                        <td>{mergeUsage(item.usage, item.frequency) || '—'}</td>
                         <td className="num money">{formatCents(item.unitPriceCents)}</td>
                         <td className="num money">{formatCents(item.amountCents)}</td>
                       </tr>
