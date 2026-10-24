@@ -3,6 +3,7 @@ import {
   PRINT_CONTENT_LAYOUT,
   buildPrescriptionFooterFields,
   buildPrescriptionHeaderFields,
+  buildPrescriptionSignatureField,
   getPrescriptionPages
 } from './prescriptionPrintLayout'
 
@@ -32,6 +33,9 @@ export function buildPrescriptionHtml(
           ...buildPrescriptionHeaderFields(prescription),
           ...buildPrescriptionFooterFields(prescription, isLastPage)
         ]
+        if (isLastPage) {
+          fields.push(buildPrescriptionSignatureField(prescription, lines.length))
+        }
         if (pageIndex > 0) {
           fields.push({
             key: 'continued',

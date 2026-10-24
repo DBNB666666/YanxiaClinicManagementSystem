@@ -5,7 +5,8 @@ import {
   PRINT_CONTENT_MAX_LINES,
   buildPrescriptionContentLines,
   buildPrescriptionFooterFields,
-  buildPrescriptionHeaderFields
+  buildPrescriptionHeaderFields,
+  buildPrescriptionSignatureField
 } from '../../src/shared/prescriptionPrintLayout'
 
 const detail = {
@@ -70,10 +71,12 @@ describe('prescription print layout', () => {
     expect(lastLineBottom).toBeLessThan(0.7)
   })
 
-  it('医师姓名位于“医师”标签同一行右侧、签名横线上方', () => {
-    const doctor = buildPrescriptionFooterFields(detail, true).find((field) => field.key === 'doctor')
-    expect(doctor).toBeDefined()
-    expect(doctor!.x).toBeGreaterThanOrEqual(0.65)
-    expect(doctor!.y).toBeLessThan(0.75)
+  it('医师签名移动到用药区右下侧，不再占用底部医师栏', () => {
+    const footer = buildPrescriptionFooterFields(detail, true)
+    expect(footer.some((field) => field.key === 'doctor')).toBe(false)
+    const signature = buildPrescriptionSignatureField(detail, 4)
+    expect(signature.x).toBeGreaterThanOrEqual(0.6)
+    expect(signature.y).toBeGreaterThanOrEqual(0.42)
+    expect(signature.y).toBeLessThanOrEqual(0.72)
   })
 })

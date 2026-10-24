@@ -10,6 +10,7 @@ import {
   PRINT_PAGE_WIDTH_MM,
   buildPrescriptionFooterFields,
   buildPrescriptionHeaderFields,
+  buildPrescriptionSignatureField,
   getPrescriptionPages,
   type PrintField
 } from '../../shared/prescriptionPrintLayout'
@@ -130,6 +131,9 @@ export async function generatePrescriptionPdf(
         ...buildPrescriptionHeaderFields(prescription),
         ...buildPrescriptionFooterFields(prescription, isLastPage)
       ]
+      if (isLastPage) {
+        fields.push(buildPrescriptionSignatureField(prescription, lines.length))
+      }
       if (pageIndex > 0) {
         fields.push({
           key: 'continued',

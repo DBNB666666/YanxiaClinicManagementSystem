@@ -38,6 +38,7 @@ test('图片模板打印预览与正32开 PDF 导出', async ({ page, request })
   await expect(frame.getByText('打印时间')).toHaveCount(0)
   await expect(frame.getByText('第 1 / 1 页')).toHaveCount(0)
   await expect(frame.getByText('用法：口服').first()).toBeVisible()
+  await expect(frame.getByText('王医生').first()).toBeVisible()
   const image = frame.locator('img.template-bg')
   await expect(image).toHaveCount(1)
   await expect
