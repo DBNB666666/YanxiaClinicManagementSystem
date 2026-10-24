@@ -1,7 +1,7 @@
-# 验收报告（v0.1.1）
+# 验收报告（v0.2.0）
 
 日期：2026-10-24
-版本：0.1.1
+版本：0.2.0
 环境：Windows 11 build 26200 / Node 24.18 / Edge headless / sql.js 1.15.1
 
 ## 1. 自动化结果
@@ -10,24 +10,24 @@
 
 命令：`npm test`
 
-结果：**8 个测试文件、40 条用例全部通过**。
+结果：**8 个测试文件、42 条用例全部通过**。
 
 | 文件 | 覆盖 |
 | --- | --- |
 | `tests/unit/money.test.ts` | 元/分转换、金额格式、盈利符号、整数运算 |
 | `tests/unit/date.test.ts` | 周一为周起点、日/周/月/年范围、周期翻页、日期校验 |
-| `tests/unit/validation.test.ts` | 药品/处方/进货必填、未来日期、Rp 500、数量/成本校验 |
+| `tests/unit/validation.test.ts` | 药品/处方/进货必填、未来日期、数量/成本校验 |
 | `tests/integration/clinicService.test.ts` | 药品增改查、进货、停用/删除规则、处方创建/编辑/删除、库存差额、价格快照、手动金额、财务日/周/月/年、负盈利、通知触发/去重/恢复、设置 |
 | `tests/integration/backup.test.ts` | 每日备份、7 份保留 |
 | `tests/integration/pdf.test.ts` | 图片 HTML 模板、130×190mm 单张 PDF、模板图片嵌入、批量 PDF 页数 |
 | `tests/integration/persistence.test.ts` | 关闭后重新打开数据仍在 |
-| `tests/unit/prescriptionPrintLayout.test.ts` | 年龄位置、Rp 下移间距、医师姓名对齐 |
+| `tests/unit/prescriptionPrintLayout.test.ts` | 年龄位置、Rp 下移间距、规范用药两行格式、医师签名位置 |
 
 ### 1.2 UI 流程（Playwright + Edge + 真实服务）
 
 命令：`npm run test:e2e`
 
-结果：**17 条 UI 用例全部通过**。
+结果：**18 条 UI 用例全部通过**。
 
 | 文件 | 覆盖 |
 | --- | --- |
@@ -36,7 +36,8 @@
 | `prescription.spec.ts` | 列表/搜索/视图、卡片/列表进入详情、详情编辑/打印/删除、编辑扣库存、新建处方、库存不足确认、删除退库存 |
 | `finance.spec.ts` | 日/周/月/年汇总、图表、期间明细抽屉 |
 | `notification.spec.ts` | 未读红点、通知抽屉、跳转药品详情、已读消红点 |
-| `print.spec.ts` | 图片模板预览、130×190mm 单张 PDF、批量导出多页、页面尺寸 |
+| `print.spec.ts` | 图片模板预览、规范用药两行、130×190mm 单张 PDF、批量导出多页、无页脚 |
+| `signature.spec.ts` | 签名图上传、保存到用户设置、重载仍显示、打印预览使用签名图 |
 
 ### 1.3 打包启动（低完整性目录）
 
@@ -44,7 +45,7 @@
 
 结果：**通过**。
 
-- 把 v0.1.1 zip 解压到 `E:\Users\HP\Desktop\YanxiaClinicManagementSystem\.tmp\package-launch-test`（继承 Low Mandatory Level）；
+- 把 v0.2.0 zip 解压到 `E:\Users\HP\Desktop\YanxiaClinicManagementSystem\.tmp\package-launch-test`（继承 Low Mandatory Level）；
 - 运行 `启动燕霞诊所管理系统.cmd`；
 - 脚本把程序复制到 `%TEMP%\yanxia-package-test-target`（普通完整性目录）；
 - 12–20 秒内出现窗口“燕霞诊所管理系统”，并创建 `data/clinic.db`；
@@ -54,7 +55,7 @@
 
 命令：`npm run verify`
 
-结果：**通过**（typecheck + lint + 40 条测试 + 构建）。
+结果：**通过**（typecheck + lint + 42 条测试 + 构建）。
 
 ## 2. 与 PRD 验收标准的对应
 
@@ -75,10 +76,10 @@
 ## 4. 交付物
 
 - 源代码（Electron + React + TypeScript）。
-- 绿色版 zip：`release/YanxiaClinicManagementSystem-0.1.1-win-x64.zip`。
+- 绿色版 zip：`release/YanxiaClinicManagementSystem-0.2.0-win-x64.zip`。
 - 使用说明、已知问题、技术验证记录。
 - 本报告。
 
 ## 5. 结论
 
-自动化范围（40 + 17 + 1 打包启动）全部通过；核心业务、处方详情、UI 流程、图片模板 PDF、年龄/Rp/医师对齐、打包后窗口启动已具备交付条件。系统打印/实体打印机属于目标机器手工复验项。
+自动化范围（42 + 18 + 1 打包启动）全部通过；核心业务、处方详情、规范用药打印、无 Rp/无页脚 PDF、签名图上传与打印、打包后窗口启动已具备交付条件。系统打印/实体打印机属于目标机器手工复验项。
