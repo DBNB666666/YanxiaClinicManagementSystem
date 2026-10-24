@@ -118,7 +118,8 @@ const DEFAULT_SETTINGS: Settings = {
   theme: 'light',
   lastDoctor: '',
   viewModes: { prescriptions: 'card', pharmacy: 'card' },
-  lastExportDir: ''
+  lastExportDir: '',
+  signatureImage: ''
 }
 
 function mapDrug(row: DrugRow): Drug {
@@ -998,6 +999,7 @@ export class ClinicService {
         if (row.key === 'lastDoctor') result.lastDoctor = value
         if (row.key === 'viewModes') result.viewModes = { ...result.viewModes, ...value }
         if (row.key === 'lastExportDir') result.lastExportDir = value
+        if (row.key === 'signatureImage') result.signatureImage = value
       } catch {
         // ignore malformed setting
       }
@@ -1013,6 +1015,7 @@ export class ClinicService {
     if (parsed.lastDoctor !== undefined) entries.push(['lastDoctor', parsed.lastDoctor])
     if (parsed.viewModes !== undefined) entries.push(['viewModes', parsed.viewModes])
     if (parsed.lastExportDir !== undefined) entries.push(['lastExportDir', parsed.lastExportDir])
+    if (parsed.signatureImage !== undefined) entries.push(['signatureImage', parsed.signatureImage])
     for (const [key, value] of entries) {
       this.store.run(
         `INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)

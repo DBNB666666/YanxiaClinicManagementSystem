@@ -89,7 +89,7 @@ export function registerIpc({ service, dataDir, getAppInfo }: RegisterOptions): 
 
   ipcMain.handle(IPC.printPrescription, wrapWithArg(async (ids: number[]) => {
     const prescriptions = service.getPrescriptionsForPrint(ids)
-    return printPrescriptions(prescriptions, dataDir)
+    return printPrescriptions(prescriptions, dataDir, service.getSettings().signatureImage)
   }))
   ipcMain.handle(IPC.printExportPdf, wrapWithArg(async (ids: number[]) => {
     const prescriptions = service.getPrescriptionsForPrint(ids)
@@ -102,6 +102,12 @@ export function registerIpc({ service, dataDir, getAppInfo }: RegisterOptions): 
     if (result.canceled || !result.filePath) {
       return { path: '', pageCount: 0 }
     }
-    return exportPrescriptionsPdf(prescriptions, dataDir, mode, result.filePath)
+    return exportPrescriptionsPdf(
+      prescriptions,
+      dataDir,
+      mode,
+      result.filePath,
+      service.getSettings().signatureImage
+    )
   }))
 }

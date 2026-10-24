@@ -27,24 +27,28 @@ export async function exportPrescriptionsPdf(
   prescriptions: PrescriptionDetail[],
   dataDir: string,
   mode: 'single' | 'batch' = prescriptions.length > 1 ? 'batch' : 'single',
-  targetPath?: string
+  targetPath?: string,
+  signatureImage?: string
 ): Promise<{ path: string; pageCount: number }> {
   const exportsDir = path.join(dataDir, 'exports')
   fs.mkdirSync(exportsDir, { recursive: true })
   const fileName = buildExportFileName(prescriptions, mode)
   const output = targetPath ?? path.join(exportsDir, fileName)
-  const result = await generatePrescriptionPdf(prescriptions, output)
+  const result = await generatePrescriptionPdf(prescriptions, output, { signatureImage })
   return { path: result.path, pageCount: result.pageCount }
 }
 
 export async function printPrescriptions(
   prescriptions: PrescriptionDetail[],
-  dataDir: string
+  dataDir: string,
+  signatureImage?: string
 ): Promise<{ path: string; pageCount: number }> {
   const result = await exportPrescriptionsPdf(
     prescriptions,
     dataDir,
-    prescriptions.length > 1 ? 'batch' : 'single'
+    prescriptions.length > 1 ? 'batch' : 'single',
+    undefined,
+    signatureImage
   )
   await shell.openPath(result.path)
   return result

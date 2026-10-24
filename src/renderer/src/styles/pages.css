@@ -214,6 +214,24 @@
   font-weight: 600;
 }
 
+.doctor-signature-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+}
+
+.signature-thumb {
+  display: block;
+  max-width: 120px;
+  max-height: 34px;
+  object-fit: contain;
+  border: 1px solid var(--divider);
+  border-radius: 4px;
+  background: #fff;
+}
+
 .rp-detail {
   min-height: 96px;
   padding: 14px 16px;

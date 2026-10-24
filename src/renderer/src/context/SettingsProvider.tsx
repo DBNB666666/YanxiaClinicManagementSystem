@@ -13,7 +13,8 @@ const DEFAULT_SETTINGS: Settings = {
   theme: 'light',
   lastDoctor: '',
   viewModes: { prescriptions: 'card', pharmacy: 'card' },
-  lastExportDir: ''
+  lastExportDir: '',
+  signatureImage: ''
 }
 
 interface SettingsContextValue {
@@ -21,6 +22,7 @@ interface SettingsContextValue {
   loading: boolean
   setTheme: (theme: Theme) => Promise<void>
   setLastDoctor: (doctor: string) => Promise<void>
+  setSignatureImage: (signatureImage: string) => Promise<void>
   setViewMode: (module: 'prescriptions' | 'pharmacy', mode: ViewMode) => Promise<void>
   refresh: () => Promise<void>
 }
@@ -76,6 +78,11 @@ export function SettingsProvider({ children }: { children: ReactNode }): React.J
     []
   )
 
+  const setSignatureImage = useCallback(async (signatureImage: string) => {
+    setSettings((current) => ({ ...current, signatureImage }))
+    await window.api.settings.set({ signatureImage })
+  }, [])
+
   const setViewMode = useCallback(
     async (module: 'prescriptions' | 'pharmacy', mode: ViewMode) => {
       setSettings((current) => ({
@@ -97,8 +104,8 @@ export function SettingsProvider({ children }: { children: ReactNode }): React.J
   )
 
   const value = useMemo(
-    () => ({ settings, loading, setTheme, setLastDoctor, setViewMode, refresh }),
-    [settings, loading, setTheme, setLastDoctor, setViewMode, refresh]
+    () => ({ settings, loading, setTheme, setLastDoctor, setSignatureImage, setViewMode, refresh }),
+    [settings, loading, setTheme, setLastDoctor, setSignatureImage, setViewMode, refresh]
   )
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>

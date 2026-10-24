@@ -67,7 +67,15 @@ export const settingsPatchSchema = z
         pharmacy: viewModeSchema
       })
       .optional(),
-    lastExportDir: z.string().optional()
+    lastExportDir: z.string().optional(),
+    signatureImage: z
+      .string()
+      .max(6_000_000, '签名图过大')
+      .refine(
+        (value) => value === '' || /^data:image\/(png|jpeg);base64,/i.test(value),
+        '签名图必须是 PNG/JPEG'
+      )
+      .optional()
   })
   .partial()
 

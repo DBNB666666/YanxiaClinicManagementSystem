@@ -84,7 +84,7 @@ function mapItem(item: PrescriptionItem, drugs: Drug[]): EditItem {
 export function PrescriptionEditPage(): React.JSX.Element {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { settings, setLastDoctor } = useSettings()
+  const { settings, setLastDoctor, setSignatureImage } = useSettings()
   const { showToast } = useToast()
   const editId = id ? Number(id) : null
   const [form, setForm] = useState<FormState>(emptyForm(settings.lastDoctor))
@@ -103,7 +103,34 @@ export function PrescriptionEditPage(): React.JSX.Element {
   const [pendingPrint, setPendingPrint] = useState(false)
   const [stockDialog, setStockDialog] = useState<string[]>([])
   const [leaveOpen, setLeaveOpen] = useState(false)
+  const [signatureBusy, setSignatureBusy] = useState(false)
+  const signatureInputRef = useRef<HTMLInputElement>(null)
   const saveRef = useRef<() => void>(() => undefined)
+
+  const uploadSignature = (file: File | undefined): void => {
+    if (!file) return
+    if (!/^image\/(png|jpeg)$/.test(file.type)) {
+      showToast('签名图只支持 PNG/JPEG', 'warning')
+      return
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      showToast('签名图不能超过 2MB', 'warning')
+      return
+    }
+    setSignatureBusy(true)
+    const reader = new FileReader()
+    reader.onload = () => {
+      void setSignatureImage(String(reader.result))
+        .then(() => showToast('签名图已保存到本机数据'))
+        .catch((cause: Error) => showToast(cause.message, 'error'))
+        .finally(() => setSignatureBusy(false))
+    }
+    reader.onerror = () => {
+      setSignatureBusy(false)
+      showToast('读取签名图失败', 'error')
+    }
+    reader.readAsDataURL(file)
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -436,6 +463,50 @@ export function PrescriptionEditPage(): React.JSX.Element {
                     data-testid="rx-doctor"
                     onChange={(event) => setField('doctor', event.target.value)}
                   />
+                  <div className="doctor-signature-row">
+                    {settings.signatureImage ? (
+                      <img
+                        className="signature-thumb"
+                        src={settings.signatureImage}
+                        alt="医师签名预览"
+                        data-testid="signature-preview"
+                      />
+                    ) : (
+                      <span className="field-hint">可上传签名图，打印时放在用药右下侧</span>
+                    )}
+                    <input
+                      ref={signatureInputRef}
+                      type="file"
+                      accept="image/png,image/jpeg"
+                      hidden
+                      data-testid="signature-upload"
+                      onChange={(event) => {
+                        uploadSignature(event.target.files?.[0])
+                        event.target.value = ''
+                      }}
+                    />
+                    <Button
+                      size="xs"
+                      variant="ghost"
+                      loading={signatureBusy}
+                      onClick={() => signatureInputRef.current?.click()}
+                    >
+                      {settings.signatureImage ? '更换签名图' : '上传签名图'}
+                    </Button>
+                    {settings.signatureImage ? (
+                      <Button
+                        size="xs"
+                        variant="text-danger"
+                        onClick={() => {
+                          void setSignatureImage('').catch((cause: Error) =>
+                            showToast(cause.message, 'error')
+                          )
+                        }}
+                      >
+                        清除
+                      </Button>
+                    ) : null}
+                  </div>
                 </Field>
               </div>
             </div>

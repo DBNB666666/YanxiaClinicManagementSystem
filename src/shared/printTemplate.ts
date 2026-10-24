@@ -18,6 +18,7 @@ function escapeHtml(value: string): string {
 
 export interface PrintTemplateOptions {
   templateUrl?: string
+  signatureImage?: string
 }
 
 export function buildPrescriptionHtml(
@@ -33,8 +34,20 @@ export function buildPrescriptionHtml(
           ...buildPrescriptionHeaderFields(prescription),
           ...buildPrescriptionFooterFields(prescription, isLastPage)
         ]
-        if (isLastPage) {
-          fields.push(buildPrescriptionSignatureField(prescription, lines.length))
+        const signatureField = isLastPage
+          ? buildPrescriptionSignatureField(prescription, lines.length)
+          : null
+        let signatureHtml = ''
+        if (signatureField) {
+          if (options.signatureImage) {
+            signatureHtml = `<img class="signature-image" src="${escapeHtml(
+              options.signatureImage
+            )}" alt="医师签名" style="left:${(signatureField.x * 100).toFixed(3)}%;top:${(
+              signatureField.y * 100
+            ).toFixed(3)}%;max-width:${(signatureField.width * 100).toFixed(3)}%;" />`
+          } else {
+            fields.push(signatureField)
+          }
         }
         if (pageIndex > 0) {
           fields.push({
@@ -78,6 +91,7 @@ export function buildPrescriptionHtml(
           ${options.templateUrl ? `<img class="template-bg" src="${escapeHtml(options.templateUrl)}" alt="" />` : ''}
           ${fieldHtml}
           ${lineHtml}
+          ${signatureHtml}
         </section>`
       })
     })
@@ -107,6 +121,10 @@ export function buildPrescriptionHtml(
   .content-line {
     position: absolute; display: block; white-space: pre; overflow: hidden;
     line-height: 1.15; color: #111;
+  }
+  .signature-image {
+    position: absolute; display: block; height: auto; max-height: 16%;
+    object-fit: contain; object-position: left top;
   }
   @media screen {
     .sheet { box-shadow: 0 4px 18px rgba(0,0,0,.12); }

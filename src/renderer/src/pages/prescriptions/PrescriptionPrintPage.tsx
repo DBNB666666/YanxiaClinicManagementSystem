@@ -9,11 +9,13 @@ import {
 } from '@shared/prescriptionPrintLayout'
 import templateUrl from '../../assets/prescription-template.jpg'
 import { Button, EmptyState } from '../../components/Ui'
+import { useSettings } from '../../context/SettingsProvider'
 import { useToast } from '../../context/ToastProvider'
 
 export function PrescriptionPrintPage(): React.JSX.Element {
   const [params] = useSearchParams()
   const navigate = useNavigate()
+  const { settings } = useSettings()
   const { showToast } = useToast()
   const [details, setDetails] = useState<PrescriptionDetail[]>([])
   const [loading, setLoading] = useState(true)
@@ -55,8 +57,14 @@ export function PrescriptionPrintPage(): React.JSX.Element {
 
   const pageCount = useMemo(() => countPrescriptionPages(details), [details])
   const html = useMemo(
-    () => (details.length ? buildPrescriptionHtml(details, { templateUrl }) : ''),
-    [details]
+    () =>
+      details.length
+        ? buildPrescriptionHtml(details, {
+            templateUrl,
+            signatureImage: settings.signatureImage
+          })
+        : '',
+    [details, settings.signatureImage]
   )
 
   const run = async (action: 'print' | 'export'): Promise<void> => {

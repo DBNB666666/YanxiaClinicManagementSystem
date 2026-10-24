@@ -104,9 +104,25 @@ export interface PdfResult {
   pageCount: number
 }
 
+export interface PrescriptionPdfOptions {
+  signatureImage?: string
+}
+
+async function embedSignature(
+  doc: PDFDocument,
+  dataUrl: string | undefined
+): Promise<PDFImage | null> {
+  if (!dataUrl) return null
+  const match = /^data:image\/(png|jpeg);base64,(.+)$/i.exec(dataUrl)
+  if (!match) return null
+  const bytes = Buffer.from(match[2], 'base64')
+  return match[1].toLowerCase() === 'png' ? doc.embedPng(bytes) : doc.embedJpg(bytes)
+}
+
 export async function generatePrescriptionPdf(
   prescriptions: PrescriptionDetail[],
-  outputPath: string
+  outputPath: string,
+  options: PrescriptionPdfOptions = {}
 ): Promise<PdfResult> {
   if (prescriptions.length === 0) {
     throw new AppError('PRINT_FAILED', '没有可打印的处方')
@@ -118,6 +134,7 @@ export async function generatePrescriptionPdf(
   doc.registerFontkit(fontkit)
   const font = await doc.embedFont(new Uint8Array(fontBytes), { subset: true })
   const template = await doc.embedJpg(templateBytes)
+  const signature = await embedSignature(doc, options.signatureImage)
 
   for (const prescription of prescriptions) {
     const contentPages = getPrescriptionPages(prescription)
@@ -131,8 +148,24 @@ export async function generatePrescriptionPdf(
         ...buildPrescriptionHeaderFields(prescription),
         ...buildPrescriptionFooterFields(prescription, isLastPage)
       ]
-      if (isLastPage) {
-        fields.push(buildPrescriptionSignatureField(prescription, lines.length))
+      const signatureField = isLastPage
+        ? buildPrescriptionSignatureField(prescription, lines.length)
+        : null
+      if (signatureField && !signature) {
+        fields.push(signatureField)
+      }
+      if (signatureField && signature) {
+        const maxWidth = signatureField.width * PAGE_WIDTH
+        const maxHeight = PAGE_HEIGHT * 0.16
+        const scale = Math.min(maxWidth / signature.width, maxHeight / signature.height)
+        const width = signature.width * scale
+        const height = signature.height * scale
+        page.drawImage(signature, {
+          x: signatureField.x * PAGE_WIDTH,
+          y: PAGE_HEIGHT * (1 - signatureField.y) - height,
+          width,
+          height
+        })
       }
       if (pageIndex > 0) {
         fields.push({

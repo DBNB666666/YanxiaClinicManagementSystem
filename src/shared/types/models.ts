@@ -138,6 +138,7 @@ export interface Settings {
   lastDoctor: string
   viewModes: Record<'prescriptions' | 'pharmacy', ViewMode>
   lastExportDir: string
+  signatureImage: string
 }
 
 export interface FinanceSummary {

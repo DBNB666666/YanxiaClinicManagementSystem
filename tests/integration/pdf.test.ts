@@ -6,6 +6,9 @@ import { generatePrescriptionPdf } from '../../src/main/services/pdfService'
 import { buildPrescriptionHtml } from '@shared/printTemplate'
 import { createTestContext, P1, P2, P3, seedBase, type TestContext } from '../helpers/testStore'
 
+const SIGNATURE_PNG =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Z1ZkAAAAASUVORK5CYII='
+
 let ctx: TestContext
 
 beforeEach(async () => {
@@ -29,13 +32,22 @@ describe('print/pdf', () => {
     expect(html).toContain('阿莫西林胶囊')
     expect(html).not.toContain('打印时间')
     expect(html).not.toContain('第 1 / 1 页')
+
+    const withSignature = buildPrescriptionHtml([detail], {
+      templateUrl: 'template.jpg',
+      signatureImage: SIGNATURE_PNG
+    })
+    expect(withSignature).toContain('class="signature-image"')
+    expect(withSignature).toContain('data:image/png;base64,')
   })
 
   it('生成正32开（130×190mm）单张 PDF 并嵌入模板图片', async () => {
     const created = ctx.service.createPrescription(P1)
     const detail = ctx.service.getPrescription(created.id)
     const out = join(ctx.dir, 'single.pdf')
-    const result = await generatePrescriptionPdf([detail], out)
+    const result = await generatePrescriptionPdf([detail], out, {
+      signatureImage: SIGNATURE_PNG
+    })
     expect(result.pageCount).toBe(1)
     expect(existsSync(out)).toBe(true)
     const bytes = await import('node:fs').then((fs) => fs.readFileSync(out))
