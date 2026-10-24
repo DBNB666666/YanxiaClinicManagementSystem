@@ -1,7 +1,7 @@
-# 验收报告（v0.4.1）
+﻿# 验收报告（v0.4.2）
 
 日期：2026-10-24
-版本：0.4.1
+版本：0.4.2
 环境：Windows 11 build 26200 / Node 24.18 / Edge headless / sql.js 1.15.1
 
 ## 1. 自动化结果
@@ -47,7 +47,7 @@
 
 结果：**通过**。
 
-- 把 v0.4.1 zip 解压到 `E:\Users\HP\Desktop\YanxiaClinicManagementSystem\.tmp\package-launch-test`（继承 Low Mandatory Level）；
+- 把 v0.4.2 zip 解压到 `E:\Users\HP\Desktop\YanxiaClinicManagementSystem\.tmp\package-launch-test`（继承 Low Mandatory Level）；
 - 运行 `启动燕霞诊所管理系统.cmd`；
 - 脚本把程序复制到 `%TEMP%\yanxia-package-test-target`（普通完整性目录）；
 - 12–20 秒内出现窗口“燕霞诊所管理系统”，并创建 `data/clinic.db`；
@@ -78,7 +78,7 @@
 ## 4. 交付物
 
 - 源代码（Electron + React + TypeScript）。
-- 绿色版 zip：`release/YanxiaClinicManagementSystem-0.4.1-win-x64.zip`。
+- 绿色版 zip：`release/YanxiaClinicManagementSystem-0.4.2-win-x64.zip`。
 - 使用说明、已知问题、技术验证记录。
 - 本报告。
 
