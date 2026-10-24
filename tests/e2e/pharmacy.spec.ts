@@ -32,6 +32,16 @@ test('点击药品卡片进入详情', async ({ page }) => {
   await expect(page.getByTestId('drug-detail-page')).toContainText('阿莫西林胶囊')
 })
 
+test('切换板块后编辑药品返回详情而不是药房', async ({ page }) => {
+  await openApp(page, '/#/pharmacy/1/edit', '[data-testid="drug-edit-page"]')
+  await page.getByRole('link', { name: '处方' }).click()
+  await page.waitForSelector('[data-testid="prescription-page"]')
+  await page.getByRole('link', { name: '药房' }).click()
+  await page.waitForSelector('[data-testid="drug-edit-page"]')
+  await page.getByRole('button', { name: '返回药房' }).click()
+  await page.waitForSelector('[data-testid="drug-detail-page"]')
+})
+
 test('新增药品、进货与停用', async ({ page, request }) => {
   await openApp(page, '/#/pharmacy', '[data-testid="pharmacy-page"]')
   await page.getByTestId('add-drug').click()

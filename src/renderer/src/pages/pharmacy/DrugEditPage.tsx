@@ -55,6 +55,7 @@ export function DrugEditPage(): React.JSX.Element {
   const navigate = useNavigate()
   const { showToast } = useToast()
   const editId = id ? Number(id) : null
+  const backTarget = editId ? `/pharmacy/${editId}` : '/pharmacy'
   const [form, setForm] = useState<DrugForm>(emptyForm)
   const [subunits, setSubunits] = useState<SubunitForm[]>([])
   const [loading, setLoading] = useState(Boolean(editId))
@@ -184,7 +185,7 @@ export function DrugEditPage(): React.JSX.Element {
 
   const back = (): void => {
     if (dirty) setLeaveOpen(true)
-    else navigate(-1)
+    else navigate(backTarget)
   }
 
   return (
@@ -485,7 +486,7 @@ export function DrugEditPage(): React.JSX.Element {
         onConfirm={() => {
           setLeaveOpen(false)
           setDirty(false)
-          navigate(-1)
+          navigate(backTarget)
         }}
         testId="leave-drug-dialog"
       />

@@ -97,6 +97,7 @@ export function PrescriptionEditPage(): React.JSX.Element {
   const { settings, setLastDoctor, setSignatureImage } = useSettings()
   const { showToast } = useToast()
   const editId = id ? Number(id) : null
+  const backTarget = editId ? `/prescriptions/${editId}` : '/prescriptions'
   const draftKey = `yanxia:rx-draft:${editId ?? 'new'}`
   const [form, setForm] = useState<FormState>(emptyForm(settings.lastDoctor))
   const [items, setItems] = useState<EditItem[]>([])
@@ -425,7 +426,7 @@ export function PrescriptionEditPage(): React.JSX.Element {
 
   const requestBack = (): void => {
     if (dirty) setLeaveOpen(true)
-    else navigate(-1)
+    else navigate(backTarget)
   }
 
   if (loading) {
@@ -902,7 +903,7 @@ export function PrescriptionEditPage(): React.JSX.Element {
         onConfirm={() => {
           setLeaveOpen(false)
           setDirty(false)
-          navigate(-1)
+          navigate(backTarget)
         }}
         testId="leave-confirm-dialog"
       />
