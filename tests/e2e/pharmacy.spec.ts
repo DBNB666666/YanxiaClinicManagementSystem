@@ -55,7 +55,7 @@ test('新增药品、进货与停用', async ({ page, request }) => {
   await page.getByTestId('confirm-purchase').click()
   await waitForToast(page, '已进货')
 
-  await expect(page.locator('.stock-number')).toHaveText('8')
+  await expect(page.locator('.stock-number')).toHaveText('8 瓶')
   const drug = await apiCall<{ stockQty: number; costCents: number }>(request, 'drugs', 'get', [
     5
   ])
