@@ -151,7 +151,7 @@ test('打印预览展示处方内容', async ({ page }) => {
   await expect(page.locator('.print-frame')).toBeVisible()
   const frame = page.frameLocator('.print-frame')
   await expect(frame.getByText('张秀兰').first()).toBeVisible()
-  await expect(frame.getByText('燕霞诊所').first()).toBeVisible()
   await expect(frame.getByText('48.00').first()).toBeVisible()
+  await expect(frame.getByText('打印时间')).toHaveCount(0)
   await expect(frame.getByText('嘱托')).toHaveCount(0)
 })

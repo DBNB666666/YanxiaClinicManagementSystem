@@ -1,10 +1,8 @@
 import type { PrescriptionDetail } from './types/models'
-import { formatDateTime } from './date'
 import {
   PRINT_CONTENT_LAYOUT,
   buildPrescriptionFooterFields,
   buildPrescriptionHeaderFields,
-  countPrescriptionPages,
   getPrescriptionPages
 } from './prescriptionPrintLayout'
 
@@ -18,8 +16,6 @@ function escapeHtml(value: string): string {
 }
 
 export interface PrintTemplateOptions {
-  clinicName?: string
-  printedAt?: string
   templateUrl?: string
 }
 
@@ -27,16 +23,10 @@ export function buildPrescriptionHtml(
   prescriptions: PrescriptionDetail[],
   options: PrintTemplateOptions = {}
 ): string {
-  const clinicName = options.clinicName ?? '燕霞诊所'
-  const printedAt = options.printedAt ?? formatDateTime(new Date().toISOString())
-  const totalPages = countPrescriptionPages(prescriptions)
-  let pageNumber = 0
-
   const pages = prescriptions
     .flatMap((prescription) => {
       const contentPages = getPrescriptionPages(prescription)
       return contentPages.map((lines, pageIndex) => {
-        pageNumber += 1
         const isLastPage = pageIndex === contentPages.length - 1
         const fields = [
           ...buildPrescriptionHeaderFields(prescription),
@@ -84,10 +74,6 @@ export function buildPrescriptionHtml(
           ${options.templateUrl ? `<img class="template-bg" src="${escapeHtml(options.templateUrl)}" alt="" />` : ''}
           ${fieldHtml}
           ${lineHtml}
-          <footer>
-            <span>${escapeHtml(clinicName)} · 打印时间：${escapeHtml(printedAt)}</span>
-            <span>第 ${pageNumber} / ${totalPages} 页</span>
-          </footer>
         </section>`
       })
     })
@@ -117,11 +103,6 @@ export function buildPrescriptionHtml(
   .content-line {
     position: absolute; display: block; white-space: pre; overflow: hidden;
     line-height: 1.15; color: #111;
-  }
-  footer {
-    position: absolute; left: 4%; right: 4%; bottom: 1.6%;
-    display: flex; justify-content: space-between; gap: 4mm;
-    color: #555; font-size: 7pt; line-height: 1.2;
   }
   @media screen {
     .sheet { box-shadow: 0 4px 18px rgba(0,0,0,.12); }

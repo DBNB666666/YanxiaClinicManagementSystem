@@ -27,7 +27,8 @@ describe('print/pdf', () => {
     expect(html).toContain('张秀兰')
     expect(html).toContain('48.00')
     expect(html).toContain('阿莫西林胶囊')
-    expect(html).toContain('燕霞诊所')
+    expect(html).not.toContain('打印时间')
+    expect(html).not.toContain('第 1 / 1 页')
   })
 
   it('生成正32开（130×190mm）单张 PDF 并嵌入模板图片', async () => {

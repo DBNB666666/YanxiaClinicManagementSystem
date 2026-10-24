@@ -4,7 +4,6 @@ import { PDFDocument, rgb, type PDFFont, type PDFImage, type PDFPage } from 'pdf
 import fontkit from '@pdf-lib/fontkit'
 import type { PrescriptionDetail } from '../../shared/types/models'
 import { AppError } from '../../shared/result'
-import { formatDateTime } from '../../shared/date'
 import {
   PRINT_CONTENT_LAYOUT,
   PRINT_PAGE_HEIGHT_MM,
@@ -97,24 +96,6 @@ class PrintRenderer {
     })
   }
 
-  drawFooter(printedAt: string, pageNumber: number, totalPages: number): void {
-    const footerSize = 7
-    this.page.drawText(`燕霞诊所 · 打印时间：${printedAt}`, {
-      x: PAGE_WIDTH * 0.04,
-      y: PAGE_HEIGHT * 0.025,
-      size: footerSize,
-      font: this.font,
-      color: rgb(0.35, 0.35, 0.35)
-    })
-    const pageText = `第 ${pageNumber} / ${totalPages} 页`
-    this.page.drawText(pageText, {
-      x: PAGE_WIDTH * 0.96 - this.font.widthOfTextAtSize(pageText, footerSize),
-      y: PAGE_HEIGHT * 0.025,
-      size: footerSize,
-      font: this.font,
-      color: rgb(0.35, 0.35, 0.35)
-    })
-  }
 }
 
 export interface PdfResult {
@@ -165,12 +146,6 @@ export async function generatePrescriptionPdf(
   }
 
   const totalPages = doc.getPageCount()
-  const printedAt = formatDateTime(new Date().toISOString())
-  doc.getPages().forEach((page, index) => {
-    const renderer = new PrintRenderer(page, font, template)
-    renderer.drawFooter(printedAt, index + 1, totalPages)
-  })
-
   const bytes = await doc.save()
   fs.mkdirSync(path.dirname(outputPath), { recursive: true })
   fs.writeFileSync(outputPath, bytes)
