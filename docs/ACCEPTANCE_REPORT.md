@@ -23,7 +23,7 @@
 | `tests/integration/persistence.test.ts` | 关闭后重新打开数据仍在 |
 | `tests/unit/prescriptionPrintLayout.test.ts` | 年龄位置、Rp 示例格式、医师签名位置 |
 | `tests/unit/expiry.test.ts` | 保质期年月天组合、按月1日计算、45天提醒与确认 |
-| `tests/integration/clinicService.test.ts` | 多批次库存、批次到期分别提醒、确认批次不影响其他批次 |
+| `tests/integration/clinicService.test.ts` | 多批次库存、批次到期分别提醒、旧处方退回库存兼容 |
 | `tests/integration/subunits.test.ts` | 多级细分单位、独立售价/成本、最细单位整数库存、整盒+零头显示、各层总量 |
 
 ### 1.2 UI 流程（Playwright + Edge + 真实服务）
@@ -87,4 +87,4 @@
 
 ## 5. 结论
 
-自动化范围（51 + 37 + 1 打包启动）全部通过；核心业务、手工处方费用、营业额财务、多批次库存与到期提醒、常用药、用药组合与组合打印、固定数量列 PDF、签名交互和打印预览状态已具备交付条件。系统打印/实体打印机属于目标机器手工复验项。
+自动化范围（52 + 37 + 1 打包启动）全部通过；核心业务、手工处方费用、营业额财务、多批次库存与到期提醒、常用药、用药组合与组合打印、固定数量列 PDF、签名交互和打印预览状态已具备交付条件。系统打印/实体打印机属于目标机器手工复验项。
