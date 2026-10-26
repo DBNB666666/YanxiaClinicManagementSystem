@@ -936,3 +936,53 @@
   gap: 4px;
   flex-shrink: 0;
 }
+
+.combo-toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 8px 0 12px;
+}
+
+.combo-toolbar .select {
+  max-width: 260px;
+}
+
+.rx-combo-group {
+  border: 1px solid var(--primary-soft);
+  background: var(--primary-soft);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.rx-combo-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.rx-combo-usage {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.rx-combo-usage .input {
+  flex: 1;
+}
+
+.rx-combo-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-top: 1px solid var(--divider);
+}
+
+.rx-combo-drug {
+  flex: 1;
+  font-weight: 500;
+}

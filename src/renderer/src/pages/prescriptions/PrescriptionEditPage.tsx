@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
-import type { Drug, Gender, PrescriptionInput, PrescriptionItem } from '@shared/types/models'
+import type { Drug, Gender, MedicationCombo, PrescriptionInput, PrescriptionItem } from '@shared/types/models'
 import { isApiErrorCode } from '@shared/apiError'
 import { centsToInput, formatCents, toCents } from '@shared/money'
 import { todayIso } from '@shared/date'
@@ -31,6 +31,9 @@ interface EditItem {
   qty: number
   usage: string
   frequency: string
+  groupKey: string
+  groupName: string
+  groupUsage: string
   unitPriceCents: number
   unitCostCents: number
   amountCents: number
@@ -85,6 +88,9 @@ function mapItem(item: PrescriptionItem, drugs: Drug[]): EditItem {
     qty: item.qty,
     usage: mergeUsage(item.usage, item.frequency),
     frequency: '',
+    groupKey: item.groupKey || `item-${item.id ?? newKey()}`,
+    groupName: item.groupName || '',
+    groupUsage: item.groupUsage || mergeUsage(item.usage, item.frequency),
     unitPriceCents: item.unitPriceCents,
     unitCostCents: item.unitCostCents,
     amountCents: item.amountCents,
@@ -105,6 +111,9 @@ export function PrescriptionEditPage(): React.JSX.Element {
   const [form, setForm] = useState<FormState>(emptyForm(settings.lastDoctor))
   const [items, setItems] = useState<EditItem[]>([])
   const [drugs, setDrugs] = useState<Drug[]>([])
+  const [combos, setCombos] = useState<MedicationCombo[]>([])
+  const [selectedComboId, setSelectedComboId] = useState('')
+  const [pickerMode, setPickerMode] = useState<'single' | 'combo'>('single')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [dirty, setDirty] = useState(false)
@@ -150,13 +159,15 @@ export function PrescriptionEditPage(): React.JSX.Element {
     async function load(): Promise<void> {
       setLoading(true)
       try {
-        const [active, stopped] = await Promise.all([
+        const [active, stopped, comboList] = await Promise.all([
           window.api.drugs.list({ page: 1, pageSize: 100 }),
-          window.api.drugs.list({ filter: 'stopped', page: 1, pageSize: 100 })
+          window.api.drugs.list({ filter: 'stopped', page: 1, pageSize: 100 }),
+          window.api.combos.list()
         ])
         const allDrugs = [...active.items, ...stopped.items]
         if (cancelled) return
         setDrugs(allDrugs)
+        setCombos(comboList)
         if (editId) {
           const detail = await window.api.prescriptions.get(editId)
           if (cancelled) return
@@ -266,6 +277,33 @@ export function PrescriptionEditPage(): React.JSX.Element {
     setDirty(true)
   }
 
+  const standaloneItems = useMemo(
+    () => items.filter((item) => !item.groupName),
+    [items]
+  )
+  const comboGroups = useMemo(() => {
+    const map = new Map<string, EditItem[]>()
+    for (const item of items) {
+      if (!item.groupName) continue
+      const group = map.get(item.groupKey) ?? []
+      group.push(item)
+      map.set(item.groupKey, group)
+    }
+    return [...map.entries()]
+  }, [items])
+
+  const updateGroupUsage = (groupKey: string, groupUsage: string): void => {
+    setItems((current) =>
+      current.map((item) => (item.groupKey === groupKey ? { ...item, groupUsage } : item))
+    )
+    setDirty(true)
+  }
+
+  const removeGroup = (groupKey: string): void => {
+    setItems((current) => current.filter((item) => item.groupKey !== groupKey))
+    setDirty(true)
+  }
+
   const updateItem = (key: string, patch: Partial<EditItem>): void => {
     setItems((current) =>
       current.map((item) => {
@@ -291,7 +329,8 @@ export function PrescriptionEditPage(): React.JSX.Element {
     setDirty(true)
   }
 
-  const openPicker = (): void => {
+  const openPicker = (mode: 'single' | 'combo' = 'single'): void => {
+    setPickerMode(mode)
     setPickerQuery('')
     setPickerSelected(new Set())
     setPickerOpen(true)
@@ -308,6 +347,7 @@ export function PrescriptionEditPage(): React.JSX.Element {
   const addSelected = (): void => {
     const chosen = drugs.filter((drug) => pickerSelected.has(drug.id))
     const existing = new Set(items.map((item) => item.drugId))
+    const groupKey = pickerMode === 'combo' ? `combo-${newKey()}` : ''
     const next = chosen
       .filter((drug) => !existing.has(drug.id))
       .map<EditItem>((drug) => ({
@@ -320,6 +360,9 @@ export function PrescriptionEditPage(): React.JSX.Element {
         qty: 1,
         usage: '',
         frequency: '',
+        groupKey: groupKey || `item-${newKey()}`,
+        groupName: groupKey ? '临时组合' : '',
+        groupUsage: '',
         unitPriceCents: drug.priceCents,
         unitCostCents: drug.costCents,
         amountCents: drug.priceCents,
@@ -329,6 +372,42 @@ export function PrescriptionEditPage(): React.JSX.Element {
       }))
     setItems((current) => [...current, ...next])
     setPickerOpen(false)
+    setDirty(true)
+  }
+
+  const addSavedCombo = (): void => {
+    const combo = combos.find((entry) => String(entry.id) === selectedComboId)
+    if (!combo) return
+    const groupKey = `combo-${newKey()}`
+    const next: EditItem[] = []
+    for (const comboItem of combo.items) {
+      const drug = drugs.find((entry) => entry.id === comboItem.drugId)
+      if (!drug) continue
+      const choices = drugUnitChoices(drug)
+      const choice = choices.find((entry) => entry.unit === comboItem.unit) ?? choices[0]
+      next.push({
+        key: newKey(),
+        drugId: drug.id,
+        drugName: drug.name,
+        unit: choice.unit,
+        unitChoices: choices,
+        baseFactor: 1 / choice.factor,
+        qty: comboItem.qty,
+        usage: '',
+        frequency: '',
+        groupKey,
+        groupName: combo.name,
+        groupUsage: '',
+        unitPriceCents: choice.priceCents,
+        unitCostCents: choice.costCents,
+        amountCents: comboItem.qty * choice.priceCents,
+        stockQty: drug.stockQty,
+        stockUnits: drug.stockUnits,
+        warningQty: drug.warningQty
+      })
+    }
+    setItems((current) => [...current, ...next])
+    setSelectedComboId('')
     setDirty(true)
   }
 
@@ -345,7 +424,10 @@ export function PrescriptionEditPage(): React.JSX.Element {
       unit: item.unit,
       qty: item.qty,
       usage: item.usage,
-      frequency: ''
+      frequency: '',
+      groupKey: item.groupKey,
+      groupName: item.groupName,
+      groupUsage: item.groupName ? item.groupUsage : item.usage
     })),
     feeCents
   })
@@ -596,21 +678,124 @@ export function PrescriptionEditPage(): React.JSX.Element {
                 size="sm"
                 icon={<Plus size={15} />}
                 style={{ marginLeft: 'auto' }}
-                onClick={openPicker}
+                onClick={() => openPicker()}
                 data-testid="add-medication"
               >
                 添加用药
               </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => openPicker('combo')}
+                data-testid="add-combo"
+              >
+                组合用药
+              </Button>
             </div>
+
+            <div className="combo-toolbar">
+              <select
+                className="select"
+                value={selectedComboId}
+                data-testid="saved-combo-select"
+                onChange={(event) => setSelectedComboId(event.target.value)}
+              >
+                <option value="">选择药房已保存组合</option>
+                {combos.map((combo) => (
+                  <option key={combo.id} value={combo.id}>
+                    {combo.name}
+                  </option>
+                ))}
+              </select>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={!selectedComboId}
+                data-testid="add-saved-combo"
+                onClick={addSavedCombo}
+              >
+                添加组合
+              </Button>
+            </div>
+
+            {comboGroups.map(([groupKey, group]) => (
+              <div className="rx-combo-group" key={groupKey} data-testid={`rx-combo-${groupKey}`}>
+                <div className="rx-combo-head">
+                  <strong>{group[0].groupName}</strong>
+                  <Button
+                    size="xs"
+                    variant="text-danger"
+                    onClick={() => removeGroup(groupKey)}
+                  >
+                    移除整个组合
+                  </Button>
+                </div>
+                <div className="rx-combo-usage">
+                  <span className="muted">用法</span>
+                  <input
+                    className="input"
+                    value={group[0].groupUsage}
+                    placeholder="由医师填写，如：口服，每天3次"
+                    data-testid={`combo-usage-${groupKey}`}
+                    onChange={(event) => updateGroupUsage(groupKey, event.target.value)}
+                  />
+                </div>
+                {group.map((item) => (
+                  <div className="rx-combo-row" key={item.key}>
+                    <span className="rx-combo-drug">{item.drugName}</span>
+                    <div className="med-qty">
+                      <input
+                        className="input"
+                        type="number"
+                        min={1}
+                        value={item.qty}
+                        data-testid={`combo-qty-${item.drugId}`}
+                        onChange={(event) =>
+                          updateItem(item.key, {
+                            qty: Math.max(1, Math.floor(Number(event.target.value) || 1))
+                          })
+                        }
+                      />
+                      <span className="med-unit">{item.unit}</span>
+                      {item.unitChoices.length > 1 ? (
+                        <select
+                          className="select med-unit-select"
+                          value={item.unit}
+                          data-testid={`combo-unit-${item.drugId}`}
+                          onChange={(event) =>
+                            updateItem(item.key, { unit: event.target.value })
+                          }
+                        >
+                          {item.unitChoices.map((choice) => (
+                            <option key={choice.unit} value={choice.unit}>
+                              {choice.unit}
+                            </option>
+                          ))}
+                        </select>
+                      ) : null}
+                    </div>
+                    <Button
+                      size="xs"
+                      variant="text-danger"
+                      onClick={() => removeItem(item.key)}
+                    >
+                      移除
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ))}
 
             {items.length === 0 ? (
               <div className="med-empty">
                 还没有添加药品。
-                <Button variant="ghost" size="sm" onClick={openPicker}>
+                <Button variant="ghost" size="sm" onClick={() => openPicker()}>
                   从药房添加
                 </Button>
               </div>
-            ) : (
+            ) : null}
+
+            {standaloneItems.length > 0 ? (
               <table className="med-table" data-testid="medication-table">
                 <thead>
                   <tr>
@@ -621,7 +806,7 @@ export function PrescriptionEditPage(): React.JSX.Element {
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((item) => (
+                  {standaloneItems.map((item) => (
                     <tr key={item.key}>
                       <td>
                         <div className="med-drug-name">{item.drugName}</div>
@@ -704,7 +889,7 @@ export function PrescriptionEditPage(): React.JSX.Element {
                   ))}
                 </tbody>
               </table>
-            )}
+            ) : null}
 
             <datalist id="usage-options">
               {[...USAGE_OPTIONS, ...FREQUENCY_OPTIONS].map((option) => (

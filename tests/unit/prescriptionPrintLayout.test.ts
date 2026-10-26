@@ -20,6 +20,7 @@ const detail = {
   doctor: '华佗',
   drugAmountCents: 900,
   injectionFeeCents: 0,
+  feeCents: 900,
   totalCents: 900,
   costCents: 800,
   createdAt: '2026-10-24T00:00:00.000Z',
@@ -56,6 +57,51 @@ describe('prescription print layout', () => {
     } as PrescriptionDetail)
     expect(lines).toEqual(['1、阿莫西林胶囊  2盒', '    用法：口服，每日1次'])
     expect(lines.join('')).not.toContain('1.')
+  })
+
+  it('组合用药按一个编号、组内缩进、组下共用一行用法打印', () => {
+    const lines = buildPrescriptionContentLines({
+      ...detail,
+      items: [
+        {
+          id: 1,
+          prescriptionId: 1,
+          drugId: 1,
+          drugName: '阿莫西林胶囊',
+          unit: '盒',
+          qty: 2,
+          usage: '',
+          frequency: '',
+          groupKey: 'combo-1',
+          groupName: '感冒组合',
+          groupUsage: '口服，每天3次',
+          unitPriceCents: 0,
+          unitCostCents: 0,
+          amountCents: 0
+        },
+        {
+          id: 2,
+          prescriptionId: 1,
+          drugId: 2,
+          drugName: '布洛芬缓释胶囊',
+          unit: '盒',
+          qty: 1,
+          usage: '',
+          frequency: '',
+          groupKey: 'combo-1',
+          groupName: '感冒组合',
+          groupUsage: '口服，每天3次',
+          unitPriceCents: 0,
+          unitCostCents: 0,
+          amountCents: 0
+        }
+      ]
+    } as PrescriptionDetail)
+    expect(lines).toEqual([
+      '1、阿莫西林胶囊  2盒',
+      '   布洛芬缓释胶囊  1盒',
+      '    用法：口服，每天3次'
+    ])
   })
 
   it('打印内容不再输出 Rp 正文/嘱托', () => {

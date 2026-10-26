@@ -100,11 +100,25 @@ export function buildPrescriptionSignatureField(
 
 export function buildPrescriptionContentLines(prescription: PrescriptionDetail): string[] {
   const lines: string[] = []
+  const groups = new Map<string, PrescriptionDetail['items']>()
   prescription.items.forEach((item, index) => {
-    const nameLine = `${index + 1}、${item.drugName}  ${item.qty}${item.unit}`
-    const usageLine = `    用法：${mergeUsage(item.usage, item.frequency) || '—'}`
-    lines.push(...wrapByChars(nameLine), ...wrapByChars(usageLine))
+    const key = item.groupKey || `standalone-${index}`
+    const group = groups.get(key) ?? []
+    group.push(item)
+    groups.set(key, group)
   })
+  let groupNumber = 0
+  for (const group of groups.values()) {
+    if (group.length === 0) continue
+    groupNumber += 1
+    const first = group[0]
+    lines.push(...wrapByChars(`${groupNumber}、${first.drugName}  ${first.qty}${first.unit}`))
+    for (const item of group.slice(1)) {
+      lines.push(...wrapByChars(`   ${item.drugName}  ${item.qty}${item.unit}`))
+    }
+    const usage = first.groupUsage || mergeUsage(first.usage, first.frequency)
+    lines.push(...wrapByChars(`    用法：${usage || '—'}`))
+  }
   return lines
 }
 
