@@ -341,41 +341,6 @@ export function DrugEditPage(): React.JSX.Element {
           </section>
 
           <section className="form-section" style={{ marginTop: 16 }}>
-            <h2 className="form-section-title">库存</h2>
-            <div className="form-grid" style={{ marginTop: 16 }}>
-              <div className="span-4">
-                <Field label="库存数量" hint="只读显示；需要修改请点盘点校正">
-                  <div className="stock-readonly-row">
-                    <span className="stock-readonly-value" data-testid="drug-stock-display">
-                      {stockLabel}
-                    </span>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      data-testid="stock-adjust-open"
-                      onClick={openStockAdjust}
-                    >
-                      盘点校正
-                    </Button>
-                  </div>
-                </Field>
-              </div>
-              <div className="span-4">
-                <Field label="预警库存" required hint="库存 ≤ 此值时提醒">
-                  <TextInput
-                    type="number"
-                    min={0}
-                    step={1}
-                    value={form.warningQty}
-                    data-testid="drug-warning"
-                    onChange={(event) => setField('warningQty', event.target.value)}
-                  />
-                </Field>
-              </div>
-            </div>
-          </section>
-
-          <section className="form-section" style={{ marginTop: 16 }}>
             <h2 className="form-section-title">细分单位（选填）</h2>
             <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>
               例如：1 盒 = 7 支，1 支 = 20 mg。库存按最细单位扣减。
@@ -456,6 +421,41 @@ export function DrugEditPage(): React.JSX.Element {
             >
               添加细分单位
             </Button>
+          </section>
+
+          <section className="form-section" style={{ marginTop: 16 }}>
+            <h2 className="form-section-title">库存</h2>
+            <div className="form-grid" style={{ marginTop: 16 }}>
+              <div className="span-4">
+                <Field label="库存数量" hint="只读显示；需要修改请点盘点校正">
+                  <div className="stock-readonly-row">
+                    <span className="stock-readonly-value" data-testid="drug-stock-display">
+                      {stockLabel}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      data-testid="stock-adjust-open"
+                      onClick={openStockAdjust}
+                    >
+                      盘点校正
+                    </Button>
+                  </div>
+                </Field>
+              </div>
+              <div className="span-4">
+                <Field label="预警库存" required hint="库存 ≤ 此值时提醒">
+                  <TextInput
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={form.warningQty}
+                    data-testid="drug-warning"
+                    onChange={(event) => setField('warningQty', event.target.value)}
+                  />
+                </Field>
+              </div>
+            </div>
           </section>
 
           <section className="form-section" style={{ marginTop: 16 }}>

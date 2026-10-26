@@ -83,6 +83,17 @@ test('面包屑显示药品层级并可跳转', async ({ page }) => {
   await page.waitForSelector('[data-testid="pharmacy-page"]')
 })
 
+test('新建药品先填细分单位再填库存', async ({ page }) => {
+  await openApp(page, '/#/pharmacy/new', '[data-testid="drug-edit-page"]')
+  const subunitHeading = page.getByText('细分单位（选填）', { exact: true })
+  const stockHeading = page.getByText('库存', { exact: true })
+  const subunitBox = await subunitHeading.boundingBox()
+  const stockBox = await stockHeading.boundingBox()
+  expect(subunitBox).not.toBeNull()
+  expect(stockBox).not.toBeNull()
+  expect(subunitBox!.y).toBeLessThan(stockBox!.y)
+})
+
 test('新增药品、进货与停用', async ({ page, request }) => {
   await openApp(page, '/#/pharmacy', '[data-testid="pharmacy-page"]')
   await page.getByTestId('add-drug').click()
