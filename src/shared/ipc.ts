@@ -13,6 +13,7 @@ export const IPC = {
   drugsLowStockCount: 'drugs:lowStockCount',
   drugsSuggestions: 'drugs:suggestions',
   drugsConfirmExpiry: 'drugs:confirmExpiry',
+  drugsConfirmBatchExpiry: 'drugs:confirmBatchExpiry',
   drugsSetCommon: 'drugs:setCommon',
   combosList: 'combos:list',
   combosGet: 'combos:get',

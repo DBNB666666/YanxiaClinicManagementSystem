@@ -1028,3 +1028,31 @@
   color: var(--text-secondary);
   font-size: 12px;
 }
+
+.extra-batch-row {
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.extra-batch-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.batch-list {
+  display: grid;
+  gap: 8px;
+}
+
+.batch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--divider);
+  padding-bottom: 8px;
+}

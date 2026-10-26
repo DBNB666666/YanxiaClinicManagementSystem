@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 7
+export const SCHEMA_VERSION = 9
 
 export const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS drugs (
@@ -52,6 +52,27 @@ CREATE TABLE IF NOT EXISTS medication_combo_items (
   sort_order INTEGER NOT NULL DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS drug_batches (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  drug_id INTEGER NOT NULL REFERENCES drugs(id) ON DELETE CASCADE,
+  production_date TEXT NOT NULL DEFAULT '',
+  shelf_life_years INTEGER NOT NULL DEFAULT 0,
+  shelf_life_months INTEGER NOT NULL DEFAULT 0,
+  shelf_life_days INTEGER NOT NULL DEFAULT 0,
+  expiry_date TEXT NOT NULL DEFAULT '',
+  expiry_ack_date TEXT NOT NULL DEFAULT '',
+  qty_units INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS prescription_item_batches (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  item_id INTEGER NOT NULL REFERENCES prescription_items(id) ON DELETE CASCADE,
+  batch_id INTEGER NOT NULL REFERENCES drug_batches(id) ON DELETE RESTRICT,
+  qty_units INTEGER NOT NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS purchases (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   drug_id INTEGER NOT NULL REFERENCES drugs(id) ON DELETE RESTRICT,
@@ -92,6 +113,7 @@ CREATE TABLE IF NOT EXISTS prescription_items (
   group_key TEXT NOT NULL DEFAULT '',
   group_name TEXT NOT NULL DEFAULT '',
   group_usage TEXT NOT NULL DEFAULT '',
+  batch_id INTEGER NOT NULL DEFAULT 0,
   unit_price_cents INTEGER NOT NULL,
   unit_cost_cents INTEGER NOT NULL,
   amount_cents INTEGER NOT NULL,
@@ -104,7 +126,9 @@ CREATE TABLE IF NOT EXISTS notifications (
   drug_name TEXT NOT NULL,
   stock_qty INTEGER NOT NULL,
   warning_qty INTEGER NOT NULL,
+  stock_display TEXT NOT NULL DEFAULT '',
   expiry_date TEXT NOT NULL DEFAULT '',
+  batch_id INTEGER NOT NULL DEFAULT 0,
   reason TEXT NOT NULL DEFAULT 'stock_low',
   created_at TEXT NOT NULL,
   read_at TEXT
@@ -123,6 +147,8 @@ CREATE INDEX IF NOT EXISTS idx_prescriptions_patient ON prescriptions(patient_na
 CREATE INDEX IF NOT EXISTS idx_items_prescription ON prescription_items(prescription_id);
 CREATE INDEX IF NOT EXISTS idx_items_drug ON prescription_items(drug_id);
 CREATE INDEX IF NOT EXISTS idx_drug_units_drug ON drug_units(drug_id, sort_order);
+CREATE INDEX IF NOT EXISTS idx_batches_drug_expiry ON drug_batches(drug_id, expiry_date);
+CREATE INDEX IF NOT EXISTS idx_item_batches_item ON prescription_item_batches(item_id);
 CREATE INDEX IF NOT EXISTS idx_combo_items_combo ON medication_combo_items(combo_id, sort_order);
 CREATE INDEX IF NOT EXISTS idx_purchases_drug_date ON purchases(drug_id, purchase_date);
 CREATE INDEX IF NOT EXISTS idx_notifications_drug_read ON notifications(drug_id, read_at);

@@ -34,6 +34,7 @@ interface EditItem {
   groupKey: string
   groupName: string
   groupUsage: string
+  batchId: number
   unitPriceCents: number
   unitCostCents: number
   amountCents: number
@@ -91,6 +92,7 @@ function mapItem(item: PrescriptionItem, drugs: Drug[]): EditItem {
     groupKey: item.groupKey || `item-${item.id ?? newKey()}`,
     groupName: item.groupName || '',
     groupUsage: item.groupUsage || mergeUsage(item.usage, item.frequency),
+    batchId: item.batchId || drug?.batches?.[0]?.id || 0,
     unitPriceCents: item.unitPriceCents,
     unitCostCents: item.unitCostCents,
     amountCents: item.amountCents,
@@ -371,6 +373,7 @@ export function PrescriptionEditPage(): React.JSX.Element {
         unitPriceCents: drug.priceCents,
         unitCostCents: drug.costCents,
         amountCents: drug.priceCents,
+        batchId: drug.batches?.find((batch) => batch.qtyUnits > 0)?.id ?? drug.batches?.[0]?.id ?? 0,
         stockQty: drug.stockQty,
         stockUnits: drug.stockUnits,
         warningQty: drug.warningQty
@@ -402,6 +405,7 @@ export function PrescriptionEditPage(): React.JSX.Element {
         unitPriceCents: drug.priceCents,
         unitCostCents: drug.costCents,
         amountCents: drug.priceCents,
+        batchId: drug.batches?.find((batch) => batch.qtyUnits > 0)?.id ?? drug.batches?.[0]?.id ?? 0,
         stockQty: drug.stockQty,
         stockUnits: drug.stockUnits,
         warningQty: drug.warningQty
@@ -437,6 +441,7 @@ export function PrescriptionEditPage(): React.JSX.Element {
         unitPriceCents: choice.priceCents,
         unitCostCents: choice.costCents,
         amountCents: comboItem.qty * choice.priceCents,
+        batchId: drug.batches?.find((batch) => batch.qtyUnits > 0)?.id ?? drug.batches?.[0]?.id ?? 0,
         stockQty: drug.stockQty,
         stockUnits: drug.stockUnits,
         warningQty: drug.warningQty
@@ -463,7 +468,8 @@ export function PrescriptionEditPage(): React.JSX.Element {
       frequency: '',
       groupKey: item.groupKey,
       groupName: item.groupName,
-      groupUsage: item.groupName ? item.groupUsage : item.usage
+      groupUsage: item.groupName ? item.groupUsage : item.usage,
+      batchId: item.batchId
     })),
     feeCents
   })
@@ -809,6 +815,24 @@ export function PrescriptionEditPage(): React.JSX.Element {
                           ))}
                         </select>
                       ) : null}
+                      <select
+                        className="select med-batch-select"
+                        value={item.batchId || ''}
+                        aria-label="选择药品批次"
+                        data-testid={`combo-batch-${item.drugId}`}
+                        onChange={(event) =>
+                          updateItem(item.key, { batchId: Number(event.target.value) })
+                        }
+                      >
+                        <option value="">请选择批次</option>
+                        {(drugs.find((drug) => drug.id === item.drugId)?.batches ?? []).map(
+                          (batch) => (
+                            <option key={batch.id} value={batch.id}>
+                              {batch.productionDate || '无生产日期'} / 到期 {batch.expiryDate || '未登记'} / 余 {batch.qtyUnits}
+                            </option>
+                          )
+                        )}
+                      </select>
                     </div>
                     <Button
                       size="xs"
@@ -904,6 +928,24 @@ export function PrescriptionEditPage(): React.JSX.Element {
                               ))}
                             </select>
                           ) : null}
+                          <select
+                            className="select med-batch-select"
+                            value={item.batchId || ''}
+                            aria-label="选择药品批次"
+                            data-testid={`med-batch-${item.drugId}`}
+                            onChange={(event) =>
+                              updateItem(item.key, { batchId: Number(event.target.value) })
+                            }
+                          >
+                            <option value="">请选择批次</option>
+                            {(drugs.find((drug) => drug.id === item.drugId)?.batches ?? []).map(
+                              (batch) => (
+                                <option key={batch.id} value={batch.id}>
+                                  {batch.productionDate || '无生产日期'} / 到期 {batch.expiryDate || '未登记'} / 余 {batch.qtyUnits}
+                                </option>
+                              )
+                            )}
+                          </select>
                         </div>
                       </td>
                       <td>

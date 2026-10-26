@@ -5,6 +5,28 @@ export type FinancePeriod = 'day' | 'week' | 'month' | 'year'
 export type ViewMode = 'card' | 'list'
 export type DrugListFilter = 'all' | 'low' | 'stopped' | 'common'
 
+export interface DrugBatch {
+  id: number
+  drugId: number
+  productionDate: string
+  shelfLifeYears: number
+  shelfLifeMonths: number
+  shelfLifeDays: number
+  expiryDate: string
+  expiryAckDate: string
+  qtyUnits: number
+  expiring: boolean
+}
+
+export interface DrugBatchInput {
+  id?: number
+  productionDate?: string
+  shelfLifeYears?: number
+  shelfLifeMonths?: number
+  shelfLifeDays?: number
+  qty: number
+}
+
 export interface DrugUnit {
   id: number
   unit: string
@@ -37,6 +59,7 @@ export interface Drug {
   expiryAckDate: string
   expiring: boolean
   isCommon: boolean
+  batches: DrugBatch[]
   category: string
   supplier: string
   indications: string
@@ -65,6 +88,7 @@ export interface DrugInput {
   shelfLifeDays?: number
   expiryAckDate?: string
   isCommon?: boolean
+  batches?: DrugBatchInput[]
   units?: DrugUnitInput[]
 }
 
@@ -87,6 +111,10 @@ export interface PurchaseInput {
   purchaseDate: string
   qty: number
   unitCostCents: number
+  productionDate?: string
+  shelfLifeYears?: number
+  shelfLifeMonths?: number
+  shelfLifeDays?: number
 }
 
 export interface PrescriptionItem {
@@ -102,6 +130,7 @@ export interface PrescriptionItem {
   groupKey: string
   groupName: string
   groupUsage: string
+  batchId: number
   unitPriceCents: number
   unitCostCents: number
   amountCents: number
@@ -143,6 +172,7 @@ export interface PrescriptionItemInput {
   groupKey?: string
   groupName?: string
   groupUsage?: string
+  batchId?: number
 }
 
 export interface MedicationComboItem {
@@ -198,7 +228,9 @@ export interface Notification {
   drugName: string
   stockQty: number
   warningQty: number
+  stockDisplay: string
   expiryDate: string
+  batchId: number
   reason: string
   createdAt: string
   readAt: string | null

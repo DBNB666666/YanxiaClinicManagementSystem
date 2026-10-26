@@ -5,7 +5,7 @@ import type { DrugDetail } from '@shared/types/models'
 import { formatDateTime } from '@shared/date'
 import { Banner, Button, EmptyState, PageHeader, Tag } from '../../components/Ui'
 import { useToast } from '../../context/ToastProvider'
-import { formatDrugStock, formatDrugUnitTotals } from '@shared/drugUnits'
+import { formatDrugStock, formatDrugUnitTotals, totalUnitFactor } from '@shared/drugUnits'
 import { Breadcrumbs } from '../../components/Breadcrumbs'
 import { PurchaseDialog } from './PurchaseDialog'
 
@@ -170,6 +170,41 @@ export function DrugDetailPage(): React.JSX.Element {
             </div>
             <div className="stock-sub" data-testid="stock-unit-totals">
               合计：{formatDrugUnitTotals(drug)}
+            </div>
+          </section>
+
+          <section className="detail-panel">
+            <h2 className="detail-panel-title">批次</h2>
+            <div className="batch-list">
+              {drug.batches.length === 0 ? (
+                <div className="muted">还没有批次</div>
+              ) : (
+                drug.batches.map((batch) => (
+                  <div className="batch-row" key={batch.id} data-testid={`batch-row-${batch.id}`}>
+                    <div>
+                      <strong>生产：{batch.productionDate || '未登记'}</strong>
+                      <div className="muted">
+                        到期：{batch.expiryDate || '未登记'} · 剩余{' '}
+                        {(batch.qtyUnits / totalUnitFactor(drug.units)).toFixed(2).replace(/\.00$/, '')}{' '}
+                        {drug.unit}
+                      </div>
+                    </div>
+                    {batch.expiring ? (
+                      <Button
+                        size="xs"
+                        variant="ghost"
+                        data-testid={`confirm-batch-${batch.id}`}
+                        onClick={async () => {
+                          await window.api.drugs.confirmBatchExpiry(batch.id)
+                          await load()
+                        }}
+                      >
+                        已处理
+                      </Button>
+                    ) : null}
+                  </div>
+                ))
+              )}
             </div>
           </section>
 

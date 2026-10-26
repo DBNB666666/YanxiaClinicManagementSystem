@@ -44,6 +44,7 @@ export interface ClinicApi {
     lowStockCount(): Promise<{ count: number }>
     suggestions(): Promise<{ categories: string[]; suppliers: string[] }>
     confirmExpiry(id: number): Promise<{ id: number }>
+    confirmBatchExpiry(batchId: number): Promise<{ id: number }>
     setCommon(id: number, isCommon: boolean): Promise<{ id: number }>
   }
   combos: {

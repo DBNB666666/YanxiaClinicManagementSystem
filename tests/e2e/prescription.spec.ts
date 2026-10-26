@@ -119,6 +119,57 @@ test('编辑处方数量按差额扣库存', async ({ page, request }) => {
   expect(drug.stockQty).toBe(7)
 })
 
+test('开方手动选批次，超量自动跨批次补扣', async ({ page, request }) => {
+  const created = await apiCall<{ id: number }>(request, 'drugs', 'create', [
+    {
+      name: '跨批测试药',
+      unit: '盒',
+      inboundDate: '2026-10-01',
+      stockQty: 8,
+      warningQty: 1,
+      category: '',
+      supplier: '',
+      indications: '',
+      costCents: 0,
+      priceCents: 0,
+      batches: [
+        { productionDate: '2026-01', shelfLifeYears: 1, qty: 5 },
+        { productionDate: '2026-02', shelfLifeYears: 1, qty: 3 }
+      ]
+    }
+  ])
+  const drug = await apiCall<{ batches: { id: number; expiryDate: string; qtyUnits: number }[] }>(
+    request,
+    'drugs',
+    'get',
+    [created.id]
+  )
+  const selected = drug.batches.find((batch) => batch.qtyUnits === 3)!
+  const other = drug.batches.find((batch) => batch.id !== selected.id)!
+
+  await openApp(page, '/#/prescriptions/new', '[data-testid="prescription-edit-page"]')
+  await page.getByTestId('rx-patient-name').fill('跨批患者')
+  await page.getByTestId('rx-age').fill('40')
+  await page.getByTestId('rx-diagnosis').fill('测试')
+  await page.getByTestId('rx-doctor').fill('王医生')
+  await page.getByTestId('add-medication').click()
+  await page.getByTestId('drug-picker-search').fill('跨批测试药')
+  await page.getByTestId(`drug-option-${created.id}`).click()
+  await page.getByTestId('confirm-add-medications').click()
+  await page.getByTestId(`med-batch-${created.id}`).selectOption(String(selected.id))
+  await page.getByTestId(`med-qty-${created.id}`).fill('4')
+  await page.getByTestId('save-prescription').click()
+  await page.waitForSelector('[data-testid="prescription-page"]')
+
+  const after = await apiCall<{ batches: { id: number; qtyUnits: number }[] }>(request, 'drugs', 'get', [
+    created.id
+  ])
+  const selectedAfter = after.batches.find((batch) => batch.id === selected.id)!
+  const otherAfter = after.batches.find((batch) => batch.id === other.id)!
+  expect(selectedAfter.qtyUnits).toBe(0)
+  expect(otherAfter.qtyUnits).toBe(4)
+})
+
 test('常用药可在开方时快速加入', async ({ page, request }) => {
   await apiCall(request, 'drugs', 'setCommon', [{ id: 1, isCommon: true }])
   await openApp(page, '/#/prescriptions/new', '[data-testid="prescription-edit-page"]')

@@ -16,7 +16,7 @@ import {
 } from '../../components/Ui'
 import { Breadcrumbs } from '../../components/Breadcrumbs'
 import { useToast } from '../../context/ToastProvider'
-import { formatDrugStock } from '@shared/drugUnits'
+import { formatDrugStock, totalUnitFactor } from '@shared/drugUnits'
 
 interface DrugForm {
   name: string
@@ -36,6 +36,17 @@ interface DrugForm {
   cost: string
   price: string
   isCommon: boolean
+}
+
+interface ExtraBatchForm {
+  id?: number
+  productionYear: string
+  productionMonth: string
+  productionDay: string
+  shelfYears: string
+  shelfMonths: string
+  shelfDays: string
+  qty: string
 }
 
 interface SubunitForm {
@@ -83,6 +94,8 @@ export function DrugEditPage(): React.JSX.Element {
   const backTarget = editId ? `/pharmacy/${editId}` : '/pharmacy'
   const [form, setForm] = useState<DrugForm>(emptyForm)
   const [subunits, setSubunits] = useState<SubunitForm[]>([])
+  const [extraBatches, setExtraBatches] = useState<ExtraBatchForm[]>([])
+  const [firstBatchId, setFirstBatchId] = useState<number | null>(null)
   const [categorySuggestions, setCategorySuggestions] = useState<string[]>([])
   const [supplierSuggestions, setSupplierSuggestions] = useState<string[]>([])
   const [stockOpen, setStockOpen] = useState(false)
@@ -126,7 +139,7 @@ export function DrugEditPage(): React.JSX.Element {
           shelfYears: String(drug.shelfLifeYears ?? 0),
           shelfMonths: String(drug.shelfLifeMonths ?? 0),
           shelfDays: String(drug.shelfLifeDays ?? 0),
-          stockQty: String(drug.stockQty),
+          stockQty: String((drug.batches?.[0]?.qtyUnits ?? drug.stockUnits) / Math.max(1, totalUnitFactor(drug.units ?? []))),
           unit: drug.unit,
           warningQty: String(drug.warningQty),
           category: drug.category,
@@ -143,6 +156,28 @@ export function DrugEditPage(): React.JSX.Element {
             price: centsToInput(unit.priceCents),
             cost: centsToInput(unit.costCents)
           }))
+        )
+        setFirstBatchId(drug.batches?.[0]?.id ?? null)
+        setExtraBatches(
+          (drug.batches ?? []).slice(1).map((batch) => {
+            const factor = totalUnitFactor(drug.units ?? [])
+            return {
+              id: batch.id,
+              productionYear: parseProductionDate(batch.productionDate)?.year
+                ? String(parseProductionDate(batch.productionDate)!.year)
+                : '',
+              productionMonth: parseProductionDate(batch.productionDate)?.month
+                ? String(parseProductionDate(batch.productionDate)!.month).padStart(2, '0')
+                : '',
+              productionDay: parseProductionDate(batch.productionDate)?.day
+                ? String(parseProductionDate(batch.productionDate)!.day).padStart(2, '0')
+                : '',
+              shelfYears: String(batch.shelfLifeYears),
+              shelfMonths: String(batch.shelfLifeMonths),
+              shelfDays: String(batch.shelfLifeDays),
+              qty: String(batch.qtyUnits / factor)
+            }
+          })
         )
       })
       .catch((cause: Error) => {
@@ -171,7 +206,11 @@ export function DrugEditPage(): React.JSX.Element {
     costCents: safeCents(row.cost)
   }))
   const totalFactor = displayUnits.reduce((total, unit) => total * unit.factor, 1)
-  const stockUnits = Math.round(Number(form.stockQty || '0') * totalFactor)
+  const extraStockUnits = extraBatches.reduce(
+    (sum, batch) => sum + Math.round(Number(batch.qty || '0') * totalFactor),
+    0
+  )
+  const stockUnits = Math.round(Number(form.stockQty || '0') * totalFactor) + extraStockUnits
   const productionDatePreview =
     form.productionYear && form.productionMonth
       ? `${form.productionYear.padStart(4, '0')}-${form.productionMonth.padStart(2, '0')}${
@@ -290,12 +329,51 @@ export function DrugEditPage(): React.JSX.Element {
         costCents: safeCents(row.cost)
       })
     }
+    for (const batch of extraBatches) {
+      if (Number(batch.qty || '0') <= 0) continue
+      if (
+        !Number.isInteger(Number(batch.productionYear)) ||
+        !Number(batch.productionMonth) ||
+        !Number(batch.productionMonth || 0) ||
+        Number(batch.productionMonth) < 1 ||
+        Number(batch.productionMonth) > 12 ||
+        Number(batch.shelfYears || 0) + Number(batch.shelfMonths || 0) + Number(batch.shelfDays || 0) <= 0
+      ) {
+        showToast('每个有库存的批次都必须填写生产年月和保质期', 'warning')
+        return
+      }
+    }
+    const batchesInput = [
+      {
+        id: firstBatchId ?? undefined,
+        productionDate: `${productionYear}-${String(productionMonth).padStart(2, '0')}${
+          productionDay ? `-${String(productionDay).padStart(2, '0')}` : ''
+        }`,
+        shelfLifeYears: shelfYears,
+        shelfLifeMonths: shelfMonths,
+        shelfLifeDays: shelfDays,
+        qty: Number(form.stockQty || '0')
+      },
+      ...extraBatches.map((batch) => ({
+        id: batch.id,
+        productionDate: batch.productionYear && batch.productionMonth
+          ? `${batch.productionYear.padStart(4, '0')}-${batch.productionMonth.padStart(2, '0')}${
+              batch.productionDay ? `-${batch.productionDay.padStart(2, '0')}` : ''
+            }`
+          : '',
+        shelfLifeYears: Number(batch.shelfYears || 0),
+        shelfLifeMonths: Number(batch.shelfMonths || 0),
+        shelfLifeDays: Number(batch.shelfDays || 0),
+        qty: Number(batch.qty || '0')
+      }))
+    ]
+    const totalBatchQty = batchesInput.reduce((sum, batch) => sum + batch.qty, 0)
     setSaving(true)
     setError(null)
     const input: DrugInput = {
       name: form.name.trim(),
       inboundDate: form.inboundDate,
-      stockQty,
+      stockQty: totalBatchQty,
       unit: form.unit.trim(),
       warningQty,
       category: form.category.trim(),
@@ -312,6 +390,7 @@ export function DrugEditPage(): React.JSX.Element {
       shelfLifeYears: shelfYears,
       shelfLifeMonths: shelfMonths,
       shelfLifeDays: shelfDays,
+      batches: batchesInput,
       units
     }
     try {
@@ -523,6 +602,180 @@ export function DrugEditPage(): React.JSX.Element {
                 </Field>
               </div>
             </div>
+          </section>
+
+          <section className="form-section" style={{ marginTop: 16 }}>
+            <h2 className="form-section-title">更多批次</h2>
+            <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>
+              同一药品不同批次的生产日期和保质期分别录入；每批数量会自动汇总到库存。
+            </p>
+            {extraBatches.map((batch, index) => {
+              const productionDate =
+                batch.productionYear && batch.productionMonth
+                  ? `${batch.productionYear.padStart(4, '0')}-${batch.productionMonth.padStart(2, '0')}${
+                      batch.productionDay ? `-${batch.productionDay.padStart(2, '0')}` : ''
+                    }`
+                  : ''
+              const expiry = computeExpiryDate(productionDate, {
+                years: Number(batch.shelfYears || 0),
+                months: Number(batch.shelfMonths || 0),
+                days: Number(batch.shelfDays || 0)
+              })
+              return (
+                <div className="extra-batch-row" key={index} data-testid={`extra-batch-${index}`}>
+                  <div className="extra-batch-head">
+                    <strong>批次 {index + 2}</strong>
+                    <Button
+                      size="xs"
+                      variant="text-danger"
+                      onClick={() => setExtraBatches((current) => current.filter((_, i) => i !== index))}
+                    >
+                      删除批次
+                    </Button>
+                  </div>
+                  <div className="date-parts">
+                    <label className="date-part">
+                      <span>年</span>
+                      <TextInput
+                        type="number"
+                        value={batch.productionYear}
+                        data-testid={`extra-batch-${index}-year`}
+                        onChange={(event) =>
+                          setExtraBatches((current) =>
+                            current.map((row, i) =>
+                              i === index ? { ...row, productionYear: event.target.value } : row
+                            )
+                          )
+                        }
+                      />
+                    </label>
+                    <label className="date-part">
+                      <span>月</span>
+                      <TextInput
+                        type="number"
+                        value={batch.productionMonth}
+                        data-testid={`extra-batch-${index}-month`}
+                        onChange={(event) =>
+                          setExtraBatches((current) =>
+                            current.map((row, i) =>
+                              i === index ? { ...row, productionMonth: event.target.value } : row
+                            )
+                          )
+                        }
+                      />
+                    </label>
+                    <label className="date-part">
+                      <span>日（选填）</span>
+                      <TextInput
+                        type="number"
+                        value={batch.productionDay}
+                        data-testid={`extra-batch-${index}-day`}
+                        onChange={(event) =>
+                          setExtraBatches((current) =>
+                            current.map((row, i) =>
+                              i === index ? { ...row, productionDay: event.target.value } : row
+                            )
+                          )
+                        }
+                      />
+                    </label>
+                  </div>
+                  <div className="date-parts" style={{ marginTop: 8 }}>
+                    <label className="date-part">
+                      <span>保质期年</span>
+                      <TextInput
+                        type="number"
+                        min={0}
+                        value={batch.shelfYears}
+                        data-testid={`extra-batch-${index}-shelf-years`}
+                        onChange={(event) =>
+                          setExtraBatches((current) =>
+                            current.map((row, i) =>
+                              i === index ? { ...row, shelfYears: event.target.value } : row
+                            )
+                          )
+                        }
+                      />
+                    </label>
+                    <label className="date-part">
+                      <span>月</span>
+                      <TextInput
+                        type="number"
+                        min={0}
+                        value={batch.shelfMonths}
+                        data-testid={`extra-batch-${index}-shelf-months`}
+                        onChange={(event) =>
+                          setExtraBatches((current) =>
+                            current.map((row, i) =>
+                              i === index ? { ...row, shelfMonths: event.target.value } : row
+                            )
+                          )
+                        }
+                      />
+                    </label>
+                    <label className="date-part">
+                      <span>天</span>
+                      <TextInput
+                        type="number"
+                        min={0}
+                        value={batch.shelfDays}
+                        data-testid={`extra-batch-${index}-shelf-days`}
+                        onChange={(event) =>
+                          setExtraBatches((current) =>
+                            current.map((row, i) =>
+                              i === index ? { ...row, shelfDays: event.target.value } : row
+                            )
+                          )
+                        }
+                      />
+                    </label>
+                  </div>
+                  <div className="date-parts" style={{ marginTop: 8 }}>
+                    <label className="date-part">
+                      <span>数量（{form.unit || '盒'}）</span>
+                      <TextInput
+                        type="number"
+                        min={0}
+                        value={batch.qty}
+                        data-testid={`extra-batch-${index}-qty`}
+                        onChange={(event) =>
+                          setExtraBatches((current) =>
+                            current.map((row, i) =>
+                              i === index ? { ...row, qty: event.target.value } : row
+                            )
+                          )
+                        }
+                      />
+                    </label>
+                    <label className="date-part">
+                      <span>到期日</span>
+                      <span className="stock-readonly-value">{expiry || '—'}</span>
+                    </label>
+                  </div>
+                </div>
+              )
+            })}
+            <Button
+              variant="secondary"
+              size="sm"
+              data-testid="add-extra-batch"
+              onClick={() =>
+                setExtraBatches((current) => [
+                  ...current,
+                  {
+                    productionYear: String(new Date().getFullYear()),
+                    productionMonth: String(new Date().getMonth() + 1).padStart(2, '0'),
+                    productionDay: '',
+                    shelfYears: '1',
+                    shelfMonths: '0',
+                    shelfDays: '0',
+                    qty: '0'
+                  }
+                ])
+              }
+            >
+              添加批次
+            </Button>
           </section>
 
           <section className="form-section" style={{ marginTop: 16 }}>

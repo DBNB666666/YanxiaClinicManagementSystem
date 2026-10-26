@@ -137,6 +137,7 @@ async function dispatch(ns: string, method: string, args: unknown[]): Promise<un
     if (method === 'lowStockCount') return service.lowStockCount()
     if (method === 'suggestions') return service.getDrugSuggestions()
     if (method === 'confirmExpiry') return service.confirmDrugExpiry(Number(args[0]))
+    if (method === 'confirmBatchExpiry') return service.confirmBatchExpiry(Number(args[0]))
     if (method === 'setCommon') {
       const first = args[0] as unknown
       if (first && typeof first === 'object' && 'id' in (first as object)) {

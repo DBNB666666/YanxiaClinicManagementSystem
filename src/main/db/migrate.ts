@@ -17,8 +17,8 @@ export function migrate(db: SqlDatabase): number {
   try {
     if (version < 1) {
       db.exec(SCHEMA_SQL)
-      db.run('PRAGMA user_version = 7')
-      version = 7
+      db.run('PRAGMA user_version = 9')
+      version = 9
     } else {
       if (version < 2) {
         db.exec(`
@@ -100,7 +100,49 @@ export function migrate(db: SqlDatabase): number {
         db.run('PRAGMA user_version = 7')
         version = 7
       }
-      db.run('PRAGMA user_version = 7')
+      if (version < 8) {
+        db.exec(`
+          CREATE TABLE IF NOT EXISTS drug_batches (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            drug_id INTEGER NOT NULL REFERENCES drugs(id) ON DELETE CASCADE,
+            production_date TEXT NOT NULL DEFAULT '',
+            shelf_life_years INTEGER NOT NULL DEFAULT 0,
+            shelf_life_months INTEGER NOT NULL DEFAULT 0,
+            shelf_life_days INTEGER NOT NULL DEFAULT 0,
+            expiry_date TEXT NOT NULL DEFAULT '',
+            expiry_ack_date TEXT NOT NULL DEFAULT '',
+            qty_units INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL
+          );
+          CREATE TABLE IF NOT EXISTS prescription_item_batches (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            item_id INTEGER NOT NULL REFERENCES prescription_items(id) ON DELETE CASCADE,
+            batch_id INTEGER NOT NULL REFERENCES drug_batches(id) ON DELETE RESTRICT,
+            qty_units INTEGER NOT NULL,
+            sort_order INTEGER NOT NULL DEFAULT 0
+          );
+          CREATE INDEX IF NOT EXISTS idx_batches_drug_expiry ON drug_batches(drug_id, expiry_date);
+          CREATE INDEX IF NOT EXISTS idx_item_batches_item ON prescription_item_batches(item_id);
+        `)
+        db.run("ALTER TABLE prescription_items ADD COLUMN batch_id INTEGER NOT NULL DEFAULT 0")
+        db.run("ALTER TABLE notifications ADD COLUMN batch_id INTEGER NOT NULL DEFAULT 0")
+        const batchRows = db.exec("SELECT id, stock_units, production_date, shelf_life_years, shelf_life_months, shelf_life_days, expiry_date, expiry_ack_date, created_at FROM drugs")
+        for (const row of batchRows[0]?.values ?? []) {
+          db.run(
+            `INSERT INTO drug_batches (drug_id, production_date, shelf_life_years, shelf_life_months, shelf_life_days, expiry_date, expiry_ack_date, qty_units, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [Number(row[0]), String(row[2] ?? ''), Number(row[3] ?? 0), Number(row[4] ?? 0), Number(row[5] ?? 0), String(row[6] ?? ''), String(row[7] ?? ''), Number(row[1] ?? 0), String(row[8] ?? new Date().toISOString())]
+          )
+        }
+        db.run('PRAGMA user_version = 8')
+        version = 8
+      }
+      if (version < 9) {
+        db.run("ALTER TABLE notifications ADD COLUMN stock_display TEXT NOT NULL DEFAULT ''")
+        db.run('PRAGMA user_version = 9')
+        version = 9
+      }
+      db.run('PRAGMA user_version = 9')
     }
     db.run('COMMIT')
     return version

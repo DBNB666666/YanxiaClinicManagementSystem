@@ -99,7 +99,7 @@ export function NotificationDrawer(): React.JSX.Element {
                 <span className="notification-meta">
                   {item.reason === 'expiry'
                     ? `请注意，${item.drugName}还有一个半月过期（到期日：${item.expiryDate}）`
-                    : `当前 ${item.stockQty} · 预警值 ${item.warningQty}`}
+                    : `当前 ${item.stockDisplay || item.stockQty} · 预警值 ${item.warningQty}`}
                 </span>
                 <span className="notification-time">{formatDateTime(item.createdAt)}</span>
               </span>

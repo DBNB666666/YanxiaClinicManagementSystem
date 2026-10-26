@@ -76,6 +76,36 @@ describe('药品', () => {
     expect(low.items.every((item) => item.stockQty <= item.warningQty)).toBe(true)
   })
 
+  it('批次到期分别提醒，确认一个批次不影响其他批次', () => {
+    const created = ctx.service.createDrug({
+      name: '多批次临期药',
+      unit: '盒',
+      inboundDate: todayIso(),
+      stockQty: 5,
+      warningQty: 1,
+      category: '',
+      supplier: '',
+      indications: '',
+      costCents: 0,
+      priceCents: 0,
+      batches: [
+        { productionDate: todayIso(), shelfLifeDays: 20, qty: 2 },
+        { productionDate: todayIso(), shelfLifeYears: 2, qty: 3 }
+      ]
+    })
+    const drug = ctx.service.getDrug(created.id)
+    expect(drug.batches).toHaveLength(2)
+    const expiring = drug.batches.find((batch) => batch.expiring)
+    expect(expiring).toBeDefined()
+    const notices = ctx.service
+      .listNotifications()
+      .items.filter((item) => item.drugId === created.id && item.reason === 'expiry')
+    expect(notices).toHaveLength(1)
+    expect(notices[0].batchId).toBe(expiring!.id)
+    ctx.service.confirmBatchExpiry(expiring!.id)
+    expect(ctx.service.getDrug(created.id).batches.find((batch) => batch.id === expiring!.id)?.expiring).toBe(false)
+  })
+
   it('进货增加库存并更新成本，历史处方快照不变', () => {
     const p1 = ctx.service.createPrescription(P1)
     const before = ctx.service.getPrescription(p1.id)

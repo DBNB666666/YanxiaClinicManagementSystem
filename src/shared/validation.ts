@@ -40,6 +40,18 @@ export const drugInputSchema = z.object({
   shelfLifeDays: z.number().int().min(0).optional(),
   expiryAckDate: z.string().trim().optional(),
   isCommon: z.boolean().optional(),
+  batches: z
+    .array(
+      z.object({
+        id: z.number().int().positive().optional(),
+        productionDate: z.string().trim().optional(),
+        shelfLifeYears: z.number().int().min(0).optional(),
+        shelfLifeMonths: z.number().int().min(0).optional(),
+        shelfLifeDays: z.number().int().min(0).optional(),
+        qty: z.number().min(0)
+      })
+    )
+    .optional(),
   units: z.array(drugUnitInputSchema).max(6, '细分单位最多 6 级').optional()
 })
 
@@ -47,7 +59,11 @@ export const purchaseInputSchema = z.object({
   drugId: z.number().int().positive(),
   purchaseDate: pastOrTodaySchema,
   qty: z.number().int('进货数量必须是整数').min(1, '进货数量必须大于 0'),
-  unitCostCents: z.number().int('单位成本必须是整数分').min(0, '单位成本不能小于 0')
+  unitCostCents: z.number().int('单位成本必须是整数分').min(0, '单位成本不能小于 0'),
+  productionDate: z.string().trim().optional(),
+  shelfLifeYears: z.number().int().min(0).optional(),
+  shelfLifeMonths: z.number().int().min(0).optional(),
+  shelfLifeDays: z.number().int().min(0).optional()
 })
 
 export const prescriptionItemInputSchema = z.object({
@@ -59,7 +75,8 @@ export const prescriptionItemInputSchema = z.object({
   frequency: z.string().trim().max(50, '服用频率最多 50 字').default(''),
   groupKey: z.string().max(100).optional(),
   groupName: z.string().trim().max(40).optional(),
-  groupUsage: z.string().trim().max(100).optional()
+  groupUsage: z.string().trim().max(100).optional(),
+  batchId: z.number().int().positive().optional()
 })
 
 export const medicationComboInputSchema = z.object({

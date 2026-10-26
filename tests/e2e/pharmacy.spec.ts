@@ -128,16 +128,43 @@ test('新增药品、进货与停用', async ({ page, request }) => {
 
   await expect(page.locator('.stock-number')).toHaveText('8 瓶')
   await expect(page.locator('.stock-unit')).toHaveCount(0)
-  const drug = await apiCall<{ stockQty: number; costCents: number }>(request, 'drugs', 'get', [
-    5
-  ])
+  const drug = await apiCall<{ stockQty: number; costCents: number; batches: unknown[] }>(
+    request,
+    'drugs',
+    'get',
+    [5]
+  )
   expect(drug.stockQty).toBe(8)
   expect(drug.costCents).toBe(0)
+  expect(drug.batches).toHaveLength(2)
 
   await page.getByTestId('toggle-drug-status').click()
   await waitForToast(page, '已停用')
   const stopped = await apiCall<{ status: string }>(request, 'drugs', 'get', [5])
   expect(stopped.status).toBe('stopped')
+})
+
+test('新建药品可录入多个批次并汇总库存', async ({ page, request }) => {
+  await openApp(page, '/#/pharmacy/new', '[data-testid="drug-edit-page"]')
+  await page.getByTestId('drug-name').fill('多批次测试药')
+  await page.getByTestId('drug-unit').fill('盒')
+  await page.getByTestId('stock-adjust-open').click()
+  await page.getByTestId('stock-base').fill('5')
+  await page.getByTestId('stock-adjust-save').click()
+  await page.getByTestId('drug-warning').fill('1')
+  await page.getByTestId('add-extra-batch').click()
+  await page.getByTestId('extra-batch-0-qty').fill('3')
+  await page.getByTestId('save-drug').click()
+  await page.waitForSelector('[data-testid="drug-detail-page"]')
+  const drug = await apiCall<{ id: number; batches: { qtyUnits: number }[] }>(request, 'drugs', 'list', [
+    { query: '多批次测试药' }
+  ])
+  const created = drug.items[0]
+  expect(created.batches).toHaveLength(2)
+  expect(created.batches.reduce((sum, batch) => sum + batch.qtyUnits, 0)).toBe(8)
+  await expect(page.locator('.stock-number')).toContainText('8 盒')
+  await expect(page.getByTestId('batch-row-' + created.batches[0].id)).toBeVisible()
+  await expect(page.getByTestId('batch-row-' + created.batches[1].id)).toBeVisible()
 })
 
 test('药房可标记和取消常用药', async ({ page, request }) => {

@@ -1,5 +1,6 @@
 import type {
   Drug,
+  DrugBatchInput,
   DrugDetail,
   DrugInput,
   DrugListQuery,
@@ -98,6 +99,19 @@ interface ComboRow {
   updated_at: string
 }
 
+interface DrugBatchRow {
+  id: number
+  drug_id: number
+  production_date: string
+  shelf_life_years: number
+  shelf_life_months: number
+  shelf_life_days: number
+  expiry_date: string
+  expiry_ack_date: string
+  qty_units: number
+  created_at: string
+}
+
 interface ComboItemRow {
   id: number
   combo_id: number
@@ -140,6 +154,7 @@ interface PrescriptionItemRow {
   group_key: string
   group_name: string
   group_usage: string
+  batch_id: number
   unit_price_cents: number
   unit_cost_cents: number
   amount_cents: number
@@ -151,7 +166,9 @@ interface NotificationRow {
   drug_name: string
   stock_qty: number
   warning_qty: number
+  stock_display: string
   expiry_date: string
+  batch_id: number
   reason: string
   created_at: string
   read_at: string | null
@@ -183,7 +200,7 @@ function mapDrugUnit(row: DrugUnitRow): DrugUnit {
   }
 }
 
-function mapDrug(row: DrugRow, units: DrugUnitRow[] = []): Drug {
+function mapDrug(row: DrugRow, units: DrugUnitRow[] = [], batches: DrugBatchRow[] = []): Drug {
   return {
     id: Number(row.id),
     name: row.name,
@@ -196,8 +213,20 @@ function mapDrug(row: DrugRow, units: DrugUnitRow[] = []): Drug {
     shelfLifeDays: Number(row.shelf_life_days ?? 0),
     expiryDate: row.expiry_date ?? '',
     expiryAckDate: row.expiry_ack_date ?? '',
-    expiring: isExpiryWarning(row.expiry_date ?? '', row.expiry_ack_date ?? ''),
+    expiring: batches.some((batch) => isExpiryWarning(batch.expiry_date, batch.expiry_ack_date)),
     isCommon: Boolean(row.is_common),
+    batches: batches.map((batch) => ({
+      id: Number(batch.id),
+      drugId: Number(batch.drug_id),
+      productionDate: batch.production_date,
+      shelfLifeYears: Number(batch.shelf_life_years),
+      shelfLifeMonths: Number(batch.shelf_life_months),
+      shelfLifeDays: Number(batch.shelf_life_days),
+      expiryDate: batch.expiry_date,
+      expiryAckDate: batch.expiry_ack_date,
+      qtyUnits: Number(batch.qty_units),
+      expiring: isExpiryWarning(batch.expiry_date, batch.expiry_ack_date)
+    })),
     stockQty: Number(row.stock_qty),
     stockUnits: Number(row.stock_units ?? 0),
     warningQty: Number(row.warning_qty),
@@ -239,6 +268,7 @@ function mapItem(row: PrescriptionItemRow): PrescriptionItem {
     groupKey: row.group_key ?? '',
     groupName: row.group_name ?? '',
     groupUsage: row.group_usage ?? '',
+    batchId: Number(row.batch_id ?? 0),
     unitPriceCents: Number(row.unit_price_cents),
     unitCostCents: Number(row.unit_cost_cents),
     amountCents: Number(row.amount_cents)
@@ -273,7 +303,9 @@ function mapNotification(row: NotificationRow): Notification {
     drugName: row.drug_name,
     stockQty: Number(row.stock_qty),
     warningQty: Number(row.warning_qty),
+    stockDisplay: row.stock_display ?? '',
     expiryDate: row.expiry_date ?? '',
+    batchId: Number(row.batch_id ?? 0),
     reason: row.reason,
     createdAt: row.created_at,
     readAt: row.read_at
@@ -337,7 +369,9 @@ export class ClinicService {
       [...params, pageSize, (page - 1) * pageSize]
     )
     return {
-      items: rows.map((row) => mapDrug(row, this.getDrugUnits(Number(row.id)))),
+      items: rows.map((row) =>
+        mapDrug(row, this.getDrugUnits(Number(row.id)), this.getDrugBatches(Number(row.id)))
+      ),
       total: Number(totalRow?.total ?? 0)
     }
   }
@@ -359,7 +393,7 @@ export class ClinicService {
       [safeId]
     )
     return {
-      ...mapDrug(row, this.getDrugUnits(safeId)),
+      ...mapDrug(row, this.getDrugUnits(safeId), this.getDrugBatches(safeId)),
       purchases: purchases.map(mapPurchase)
     }
   }
@@ -405,6 +439,27 @@ export class ClinicService {
       ]
     )
     this.saveDrugUnits(id, units)
+    if (drug.batches && drug.batches.length > 0) {
+      this.saveDrugBatches(id, drug.batches, totalUnitFactor(units))
+    } else {
+      this.store.insert(
+        `INSERT INTO drug_batches
+          (drug_id, production_date, shelf_life_years, shelf_life_months, shelf_life_days,
+           expiry_date, expiry_ack_date, qty_units, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          id,
+          productionDate,
+          shelfLife.years,
+          shelfLife.months,
+          shelfLife.days,
+          expiryDate,
+          '',
+          stockUnits,
+          now
+        ]
+      )
+    }
     this.syncDrugNotification(id)
     this.syncExpiryNotification(id)
     this.onDataChanged?.()
@@ -459,10 +514,188 @@ export class ClinicService {
       ]
     )
     if (drug.units) this.saveDrugUnits(safeId, drug.units)
+    if (drug.batches && drug.batches.length > 0) {
+      this.saveDrugBatches(safeId, drug.batches, totalUnitFactor(units))
+    }
     this.syncDrugNotification(safeId)
     this.syncExpiryNotification(safeId)
     this.onDataChanged?.()
     return { id: safeId }
+  }
+
+  private recalculateDrugStock(drugId: number): void {
+    const batches = this.store.queryAll<{ qty_units: number }>(
+      'SELECT qty_units FROM drug_batches WHERE drug_id = ?',
+      [drugId]
+    )
+    const totalUnits = batches.reduce((sum, batch) => sum + Number(batch.qty_units), 0)
+    const factor = totalUnitFactor(this.getDrugUnits(drugId))
+    this.store.run('UPDATE drugs SET stock_units = ?, stock_qty = ?, updated_at = ? WHERE id = ?', [
+      totalUnits,
+      totalUnits / factor,
+      nowIso(),
+      drugId
+    ])
+  }
+
+  private saveDrugBatches(
+    drugId: number,
+    inputs: DrugBatchInput[],
+    factor: number
+  ): void {
+    for (const input of inputs) {
+      const productionDate = input.productionDate ?? ''
+      const shelfLife = {
+        years: input.shelfLifeYears ?? 0,
+        months: input.shelfLifeMonths ?? 0,
+        days: input.shelfLifeDays ?? 0
+      }
+      const expiryDate = computeExpiryDate(productionDate, shelfLife)
+      const qtyUnits = Math.round(input.qty * factor)
+      if (input.id) {
+        this.store.run(
+          `UPDATE drug_batches SET production_date = ?, shelf_life_years = ?, shelf_life_months = ?,
+             shelf_life_days = ?, expiry_date = ?, qty_units = ? WHERE id = ? AND drug_id = ?`,
+          [
+            productionDate,
+            shelfLife.years,
+            shelfLife.months,
+            shelfLife.days,
+            expiryDate,
+            qtyUnits,
+            input.id,
+            drugId
+          ]
+        )
+      } else {
+        this.store.insert(
+          `INSERT INTO drug_batches
+            (drug_id, production_date, shelf_life_years, shelf_life_months, shelf_life_days,
+             expiry_date, expiry_ack_date, qty_units, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, '', ?, ?)`,
+          [
+            drugId,
+            productionDate,
+            shelfLife.years,
+            shelfLife.months,
+            shelfLife.days,
+            expiryDate,
+            qtyUnits,
+            nowIso()
+          ]
+        )
+      }
+    }
+    const keepIds = inputs.filter((input) => input.id).map((input) => Number(input.id))
+    if (keepIds.length > 0) {
+      const placeholders = keepIds.map(() => '?').join(',')
+      this.store.run(
+        `DELETE FROM drug_batches
+         WHERE drug_id = ? AND id NOT IN (${placeholders})
+           AND id NOT IN (SELECT batch_id FROM prescription_item_batches)`,
+        [drugId, ...keepIds]
+      )
+    }
+    this.recalculateDrugStock(drugId)
+  }
+
+  private getDrugBatches(drugId: number): DrugBatchRow[] {
+    return this.store.queryAll<DrugBatchRow>(
+      'SELECT * FROM drug_batches WHERE drug_id = ? ORDER BY expiry_date ASC, id ASC',
+      [drugId]
+    )
+  }
+
+  private allocateBatches(
+    drugId: number,
+    requestedBatchId: number,
+    qtyUnits: number,
+    allowNegative: boolean
+  ): { batchId: number; qtyUnits: number }[] {
+    const batches = this.getDrugBatches(drugId)
+    const ordered = [
+      ...batches.filter((batch) => Number(batch.id) === requestedBatchId),
+      ...batches
+        .filter((batch) => Number(batch.id) !== requestedBatchId)
+        .sort((a, b) => {
+          if (!a.expiry_date) return 1
+          if (!b.expiry_date) return -1
+          return a.expiry_date.localeCompare(b.expiry_date)
+        })
+    ]
+    let remaining = qtyUnits
+    const allocations: { batchId: number; qtyUnits: number }[] = []
+    for (const batch of ordered) {
+      if (remaining <= 0) break
+      const available = Math.max(0, Number(batch.qty_units))
+      if (available <= 0) continue
+      const take = Math.min(available, remaining)
+      this.store.run('UPDATE drug_batches SET qty_units = qty_units - ? WHERE id = ?', [
+        take,
+        Number(batch.id)
+      ])
+      allocations.push({ batchId: Number(batch.id), qtyUnits: take })
+      remaining -= take
+    }
+    if (remaining > 0) {
+      if (!allowNegative) {
+        const drug = this.store.queryOne<DrugRow>('SELECT * FROM drugs WHERE id = ?', [drugId])
+        throw new AppError('STOCK_INSUFFICIENT', '库存不足', [
+          `${drug?.name ?? '药品'}：库存不足`
+        ])
+      }
+      const target = ordered[0]
+      if (!target) throw new AppError('VALIDATION_ERROR', '药品没有可用批次')
+      this.store.run('UPDATE drug_batches SET qty_units = qty_units - ? WHERE id = ?', [
+        remaining,
+        Number(target.id)
+      ])
+      allocations.push({ batchId: Number(target.id), qtyUnits: remaining })
+    }
+    this.recalculateDrugStock(drugId)
+    return allocations
+  }
+
+  private restoreItemBatches(itemIds: number[]): void {
+    if (itemIds.length === 0) return
+    const placeholders = itemIds.map(() => '?').join(',')
+    const allocations = this.store.queryAll<{
+      batch_id: number
+      qty_units: number
+      drug_id: number
+    }>(
+      `SELECT b.batch_id, b.qty_units, d.drug_id
+       FROM prescription_item_batches b
+       JOIN prescription_items d ON d.id = b.item_id
+       WHERE b.item_id IN (${placeholders})`,
+      itemIds
+    )
+    const drugIds = new Set<number>()
+    for (const allocation of allocations) {
+      this.store.run('UPDATE drug_batches SET qty_units = qty_units + ? WHERE id = ?', [
+        Number(allocation.qty_units),
+        Number(allocation.batch_id)
+      ])
+      drugIds.add(Number(allocation.drug_id))
+    }
+    this.store.run(
+      `DELETE FROM prescription_item_batches WHERE item_id IN (${placeholders})`,
+      itemIds
+    )
+    for (const drugId of drugIds) this.recalculateDrugStock(drugId)
+  }
+
+  private saveItemBatches(
+    itemId: number,
+    allocations: { batchId: number; qtyUnits: number }[]
+  ): void {
+    allocations.forEach((allocation, index) => {
+      this.store.insert(
+        `INSERT INTO prescription_item_batches (item_id, batch_id, qty_units, sort_order)
+         VALUES (?, ?, ?, ?)`,
+        [itemId, allocation.batchId, allocation.qtyUnits, index]
+      )
+    })
   }
 
   private getDrugUnits(drugId: number): DrugUnitRow[] {
@@ -572,6 +805,29 @@ export class ClinicService {
         `UPDATE drugs SET stock_qty = ?, stock_units = ?, cost_cents = ?, updated_at = ? WHERE id = ?`,
         [newStockUnits / factor, newStockUnits, parsed.unitCostCents, now, parsed.drugId]
       )
+      const batchInput =
+        parsed.productionDate ||
+        (parsed.shelfLifeYears ?? 0) + (parsed.shelfLifeMonths ?? 0) + (parsed.shelfLifeDays ?? 0) > 0
+          ? {
+              productionDate: parsed.productionDate ?? '',
+              shelfLifeYears: parsed.shelfLifeYears ?? 0,
+              shelfLifeMonths: parsed.shelfLifeMonths ?? 0,
+              shelfLifeDays: parsed.shelfLifeDays ?? 0,
+              qty: parsed.qty
+            }
+          : null
+      if (batchInput) {
+        this.saveDrugBatches(parsed.drugId, [batchInput], factor)
+      } else {
+        this.store.insert(
+          `INSERT INTO drug_batches
+            (drug_id, production_date, shelf_life_years, shelf_life_months, shelf_life_days,
+             expiry_date, expiry_ack_date, qty_units, created_at)
+           VALUES (?, '', 0, 0, 0, '', '', ?, ?)`,
+          [parsed.drugId, parsed.qty * factor, now]
+        )
+      }
+      this.recalculateDrugStock(parsed.drugId)
       this.syncDrugNotification(parsed.drugId)
       const updated = this.store.queryOne<DrugRow>('SELECT * FROM drugs WHERE id = ?', [
         parsed.drugId
@@ -851,9 +1107,9 @@ export class ClinicService {
         this.store.insert(
           `INSERT INTO prescription_items
             (prescription_id, drug_id, drug_name, unit, unit_factor, qty, usage, frequency,
-             group_key, group_name, group_usage,
+             group_key, group_name, group_usage, batch_id,
              unit_price_cents, unit_cost_cents, amount_cents, sort_order)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             prescriptionId,
             row.item.drugId,
@@ -866,20 +1122,28 @@ export class ClinicService {
             row.item.groupKey ?? '',
             row.item.groupName ?? '',
             row.item.groupUsage ?? '',
+            row.item.batchId ?? 0,
             row.unitPriceCents,
             row.unitCostCents,
             row.amountCents,
             row.index
           ]
         )
-        const factor = totalUnitFactor(this.getDrugUnits(row.item.drugId))
-        const deducted = row.item.qty * row.baseFactor * factor
-        const newUnits = Math.round(Number(row.drug.stock_units ?? 0) - deducted)
-        this.store.run(
-          'UPDATE drugs SET stock_qty = ?, stock_units = ?, updated_at = ? WHERE id = ?',
-          [newUnits / factor, newUnits, now, row.item.drugId]
+        const itemId = Number(
+          this.store.queryOne<{ id: number }>('SELECT last_insert_rowid() AS id')?.id ?? 0
         )
+        const factor = totalUnitFactor(this.getDrugUnits(row.item.drugId))
+        const batches = this.getDrugBatches(row.item.drugId)
+        const selectedBatchId = row.item.batchId ?? Number(batches[0]?.id ?? 0)
+        const allocations = this.allocateBatches(
+          row.item.drugId,
+          selectedBatchId,
+          Math.round(row.item.qty * row.baseFactor * factor),
+          allowNegativeStock
+        )
+        this.saveItemBatches(itemId, allocations)
         this.syncDrugNotification(row.item.drugId)
+        this.syncExpiryNotification(row.item.drugId)
       }
 
       return { id: prescriptionId, warnings }
@@ -906,6 +1170,7 @@ export class ClinicService {
         [safeId]
       )
       const oldById = new Map(oldItems.map((item) => [Number(item.id), item]))
+      this.restoreItemBatches(oldItems.map((item) => Number(item.id)))
 
       const prepared = parsed.items.map((item, index) => {
         const old = item.id ? oldById.get(item.id) : undefined
@@ -945,54 +1210,7 @@ export class ClinicService {
       const drugAmountCents = feeCents
       const totalCents = feeCents
 
-      const medicationsUnchanged =
-        oldItems.length === parsed.items.length &&
-        parsed.items.every((item) => {
-          const old = item.id ? oldById.get(item.id) : undefined
-          return (
-            old != null &&
-            Number(old.drug_id) === item.drugId &&
-            Number(old.qty) === item.qty &&
-            old.unit === (item.unit ?? old.unit)
-          )
-        })
-
-      const stockDelta = new Map<number, number>()
-      if (!medicationsUnchanged) {
-        for (const old of oldItems) {
-          const factor = totalUnitFactor(this.getDrugUnits(Number(old.drug_id)))
-          stockDelta.set(
-            Number(old.drug_id),
-            (stockDelta.get(Number(old.drug_id)) ?? 0) +
-              Number(old.qty) * Number(old.unit_factor ?? 1) * factor
-          )
-        }
-        for (const row of prepared) {
-          const drugId = row.old ? Number(row.old.drug_id) : row.item.drugId
-          const factor = totalUnitFactor(this.getDrugUnits(drugId))
-          stockDelta.set(drugId, (stockDelta.get(drugId) ?? 0) - row.item.qty * row.baseFactor * factor)
-        }
-      }
-
       const warnings: string[] = []
-      for (const [drugId, delta] of stockDelta.entries()) {
-        const drug = this.store.queryOne<DrugRow>('SELECT * FROM drugs WHERE id = ?', [drugId])
-        if (!drug) continue
-        const finalStock = Number(drug.stock_units ?? 0) + delta
-        if (finalStock < 0) {
-          warnings.push(
-            `${drug.name}：库存不足，当前 ${formatDrugStock({
-              unit: drug.unit,
-              stockQty: Number(drug.stock_qty),
-              stockUnits: Number(drug.stock_units ?? 0),
-              units: this.getDrugUnits(drugId).map(mapDrugUnit)
-            })}`
-          )
-        }
-      }
-      if (warnings.length > 0 && !allowNegativeStock) {
-        throw new AppError('STOCK_INSUFFICIENT', '库存不足', warnings)
-      }
 
       this.store.run(
         `UPDATE prescriptions SET patient_name = ?, gender = ?, age = ?, diagnosis = ?,
@@ -1028,7 +1246,7 @@ export class ClinicService {
           this.store.run(
             `UPDATE prescription_items
              SET qty = ?, usage = ?, frequency = ?, group_key = ?, group_name = ?,
-                 group_usage = ?, amount_cents = ?, sort_order = ?
+                 group_usage = ?, batch_id = ?, amount_cents = ?, sort_order = ?
              WHERE id = ?`,
             [
               row.item.qty,
@@ -1037,6 +1255,7 @@ export class ClinicService {
               row.item.groupKey ?? row.old.group_key ?? '',
               row.item.groupName ?? row.old.group_name ?? '',
               row.item.groupUsage ?? row.old.group_usage ?? '',
+              row.item.batchId ?? row.old.batch_id ?? 0,
               row.amountCents,
               row.index,
               Number(row.old.id)
@@ -1046,9 +1265,9 @@ export class ClinicService {
           this.store.insert(
             `INSERT INTO prescription_items
               (prescription_id, drug_id, drug_name, unit, unit_factor, qty, usage, frequency,
-               group_key, group_name, group_usage,
+               group_key, group_name, group_usage, batch_id,
                unit_price_cents, unit_cost_cents, amount_cents, sort_order)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               safeId,
               row.item.drugId,
@@ -1061,6 +1280,7 @@ export class ClinicService {
               row.item.groupKey ?? '',
               row.item.groupName ?? '',
               row.item.groupUsage ?? '',
+              row.item.batchId ?? 0,
               row.unitPriceCents,
               row.unitCostCents,
               row.amountCents,
@@ -1068,18 +1288,24 @@ export class ClinicService {
             ]
           )
         }
-      }
-
-      for (const [drugId, delta] of stockDelta.entries()) {
-        if (delta === 0) continue
-        const factor = totalUnitFactor(this.getDrugUnits(drugId))
-        const current = this.store.queryOne<DrugRow>('SELECT * FROM drugs WHERE id = ?', [drugId])
-        const nextUnits = Math.round(Number(current?.stock_units ?? 0) + delta)
-        this.store.run(
-          'UPDATE drugs SET stock_qty = ?, stock_units = ?, updated_at = ? WHERE id = ?',
-          [nextUnits / factor, nextUnits, now, drugId]
+        const itemId = row.old
+          ? Number(row.old.id)
+          : Number(
+              this.store.queryOne<{ id: number }>('SELECT last_insert_rowid() AS id')?.id ?? 0
+            )
+        const factor = totalUnitFactor(this.getDrugUnits(row.item.drugId))
+        const batches = this.getDrugBatches(row.item.drugId)
+        const selectedBatchId =
+          row.item.batchId ?? row.old?.batch_id ?? Number(batches[0]?.id ?? 0)
+        const allocations = this.allocateBatches(
+          row.item.drugId,
+          selectedBatchId,
+          Math.round(row.item.qty * row.baseFactor * factor),
+          allowNegativeStock
         )
-        this.syncDrugNotification(drugId)
+        this.saveItemBatches(itemId, allocations)
+        this.syncDrugNotification(row.item.drugId)
+        this.syncExpiryNotification(row.item.drugId)
       }
 
       return { id: safeId, warnings }
@@ -1099,20 +1325,7 @@ export class ClinicService {
         'SELECT * FROM prescription_items WHERE prescription_id = ?',
         [safeId]
       )
-      const now = nowIso()
-      for (const item of items) {
-        const drugId = Number(item.drug_id)
-        const factor = totalUnitFactor(this.getDrugUnits(drugId))
-        const drug = this.store.queryOne<DrugRow>('SELECT * FROM drugs WHERE id = ?', [drugId])
-        const nextUnits = Math.round(
-          Number(drug?.stock_units ?? 0) +
-            Number(item.qty) * Number(item.unit_factor ?? 1) * factor
-        )
-        this.store.run(
-          'UPDATE drugs SET stock_qty = ?, stock_units = ?, updated_at = ? WHERE id = ?',
-          [nextUnits / factor, nextUnits, now, drugId]
-        )
-      }
+      this.restoreItemBatches(items.map((item) => Number(item.id)))
       this.store.run('DELETE FROM prescriptions WHERE id = ?', [safeId])
       for (const item of items) {
         this.syncDrugNotification(Number(item.drug_id))
@@ -1294,54 +1507,20 @@ export class ClinicService {
     const safeId = idSchema.parse(id)
     const drug = this.store.queryOne<DrugRow>('SELECT * FROM drugs WHERE id = ?', [safeId])
     if (!drug) throw new AppError('NOT_FOUND', '药品不存在')
-    if (drug.expiry_date) {
-      this.store.run('UPDATE drugs SET expiry_ack_date = ?, updated_at = ? WHERE id = ?', [
-        drug.expiry_date,
-        nowIso(),
-        safeId
-      ])
-      this.store.run(
-        "UPDATE notifications SET read_at = ? WHERE drug_id = ? AND reason = 'expiry' AND read_at IS NULL",
-        [nowIso(), safeId]
-      )
-    }
-    this.onDataChanged?.()
-    return { id: safeId }
-  }
-
-  private syncExpiryNotification(drugId: number): void {
-    const drug = this.store.queryOne<DrugRow>('SELECT * FROM drugs WHERE id = ?', [drugId])
-    const now = nowIso()
-    if (!drug || drug.status !== 'active' || !drug.expiry_date) return
-    const shouldAlert = isExpiryWarning(drug.expiry_date, drug.expiry_ack_date)
-    if (!shouldAlert) {
-      this.store.run(
-        "UPDATE notifications SET read_at = ? WHERE drug_id = ? AND reason = 'expiry' AND read_at IS NULL",
-        [now, drugId]
-      )
-      return
-    }
-    const same = this.store.queryOne<{ count: number }>(
-      "SELECT COUNT(*) AS count FROM notifications WHERE drug_id = ? AND reason = 'expiry' AND expiry_date = ? AND read_at IS NULL",
-      [drugId, drug.expiry_date]
+    this.store.run(
+      "UPDATE drug_batches SET expiry_ack_date = expiry_date WHERE drug_id = ? AND expiry_date <> ''",
+      [safeId]
     )
-    if (Number(same?.count ?? 0) > 0) return
+    this.store.run('UPDATE drugs SET updated_at = ?, expiry_ack_date = expiry_date WHERE id = ?', [
+      nowIso(),
+      safeId
+    ])
     this.store.run(
       "UPDATE notifications SET read_at = ? WHERE drug_id = ? AND reason = 'expiry' AND read_at IS NULL",
-      [now, drugId]
+      [nowIso(), safeId]
     )
-    this.store.insert(
-      `INSERT INTO notifications (drug_id, drug_name, stock_qty, warning_qty, expiry_date, reason, created_at)
-       VALUES (?, ?, ?, ?, ?, 'expiry', ?)`,
-      [
-        drugId,
-        drug.name,
-        Number(drug.stock_qty),
-        Number(drug.warning_qty),
-        drug.expiry_date,
-        now
-      ]
-    )
+    this.onDataChanged?.()
+    return { id: safeId }
   }
 
   private syncDrugNotification(drugId: number): void {
@@ -1367,10 +1546,80 @@ export class ClinicService {
     const today = localDateOf(now)
     if (latest && localDateOf(latest.created_at) === today) return
     this.store.insert(
-      `INSERT INTO notifications (drug_id, drug_name, stock_qty, warning_qty, reason, created_at)
-       VALUES (?, ?, ?, ?, 'stock_low', ?)`,
-      [drugId, drug.name, Number(drug.stock_qty), Number(drug.warning_qty), now]
+      `INSERT INTO notifications
+        (drug_id, drug_name, stock_qty, warning_qty, stock_display, reason, created_at)
+       VALUES (?, ?, ?, ?, ?, 'stock_low', ?)`,
+      [
+        drugId,
+        drug.name,
+        Number(drug.stock_qty),
+        Number(drug.warning_qty),
+        formatDrugStock({
+          unit: drug.unit,
+          stockQty: Number(drug.stock_qty),
+          stockUnits: Number(drug.stock_units ?? 0),
+          units: this.getDrugUnits(drugId).map(mapDrugUnit)
+        }),
+        now
+      ]
     )
+  }
+
+  private syncExpiryNotification(drugId: number): void {
+    const drug = this.store.queryOne<DrugRow>('SELECT * FROM drugs WHERE id = ?', [drugId])
+    const now = nowIso()
+    if (!drug || drug.status !== 'active') return
+    const batches = this.getDrugBatches(drugId)
+    for (const batch of batches) {
+      if (!batch.expiry_date) continue
+      const batchId = Number(batch.id)
+      const shouldAlert = isExpiryWarning(batch.expiry_date, batch.expiry_ack_date)
+      if (!shouldAlert) {
+        this.store.run(
+          "UPDATE notifications SET read_at = ? WHERE batch_id = ? AND reason = 'expiry' AND read_at IS NULL",
+          [now, batchId]
+        )
+        continue
+      }
+      const same = this.store.queryOne<{ count: number }>(
+        "SELECT COUNT(*) AS count FROM notifications WHERE batch_id = ? AND reason = 'expiry' AND expiry_date = ? AND read_at IS NULL",
+        [batchId, batch.expiry_date]
+      )
+      if (Number(same?.count ?? 0) > 0) continue
+      this.store.run(
+        "UPDATE notifications SET read_at = ? WHERE batch_id = ? AND reason = 'expiry' AND read_at IS NULL",
+        [now, batchId]
+      )
+      this.store.insert(
+        `INSERT INTO notifications
+          (drug_id, drug_name, stock_qty, warning_qty, expiry_date, batch_id, reason, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'expiry', ?)`,
+        [
+          drugId,
+          drug.name,
+          Number(drug.stock_qty),
+          Number(drug.warning_qty),
+          batch.expiry_date,
+          batchId,
+          now
+        ]
+      )
+    }
+  }
+
+  confirmBatchExpiry(batchId: number): { id: number } {
+    const safeId = idSchema.parse(batchId)
+    const batch = this.store.queryOne<DrugBatchRow>('SELECT * FROM drug_batches WHERE id = ?', [
+      safeId
+    ])
+    if (!batch) throw new AppError('NOT_FOUND', '批次不存在')
+    this.store.run('UPDATE drug_batches SET expiry_ack_date = expiry_date WHERE id = ?', [safeId])
+    this.store.run(
+      "UPDATE notifications SET read_at = ? WHERE batch_id = ? AND reason = 'expiry' AND read_at IS NULL",
+      [nowIso(), safeId]
+    )
+    this.onDataChanged?.()
+    return { id: safeId }
   }
 
   // ---------- 设置 ----------
