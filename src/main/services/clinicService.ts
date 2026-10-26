@@ -27,7 +27,7 @@ import type {
   Settings
 } from '../../shared/types/models'
 import { AppError } from '../../shared/result'
-import { formatCents, multiplyCents, sumCents } from '../../shared/money'
+import { formatCents, multiplyCents } from '../../shared/money'
 import { getGroupLabel, getPeriodRange, nowIso, formatDateTime } from '../../shared/date'
 import { formatDrugStock, totalUnitFactor } from '../../shared/drugUnits'
 import {

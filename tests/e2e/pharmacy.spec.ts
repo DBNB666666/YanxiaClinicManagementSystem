@@ -59,6 +59,18 @@ test('药房新增和编辑用药组合', async ({ page, request }) => {
   expect(combos[0].name).toBe('感冒组合')
   expect(combos[0].items[0].drugName).toBe('阿莫西林胶囊')
   expect(combos[0].items[0].qty).toBe(2)
+
+  await page.getByTestId('combo-1').getByText('编辑').click()
+  await page.getByTestId('combo-qty-0').fill('3')
+  await page.getByTestId('save-combo').click()
+  await expect.poll(async () => {
+    const updated = await apiCall<{ items: { items: { qty: number }[] }[] }>(
+      request,
+      'combos',
+      'list'
+    )
+    return updated[0].items[0].qty
+  }).toBe(3)
 })
 
 test('面包屑显示药品层级并可跳转', async ({ page }) => {
