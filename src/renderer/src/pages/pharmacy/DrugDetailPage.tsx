@@ -153,7 +153,7 @@ export function DrugDetailPage(): React.JSX.Element {
             </Button>
           }
         >
-          库存偏低：当前 {drug.stockQty} {drug.unit}，预警值 {drug.warningQty} {drug.unit}
+          库存偏低：当前 {formatDrugStock(drug)}，预警值 {drug.warningQty} {drug.unit}
         </Banner>
       ) : null}
 

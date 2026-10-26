@@ -165,6 +165,27 @@ test('药品分类和供应商提供历史输入建议', async ({ page }) => {
   expect(suppliers).toContain('华康医药')
 })
 
+test('库存偏低提示不显示小数', async ({ page, request }) => {
+  const created = await apiCall<{ id: number }>(request, 'drugs', 'create', [
+    {
+      name: '小数库存药',
+      unit: '盒',
+      inboundDate: new Date().toISOString().slice(0, 10),
+      stockQty: 4.3,
+      warningQty: 5,
+      category: '',
+      supplier: '',
+      indications: '',
+      costCents: 0,
+      priceCents: 0,
+      units: [{ unit: '支', factor: 7, priceCents: 0, costCents: 0 }]
+    }
+  ])
+  await openApp(page, `/#/pharmacy/${created.id}`, '[data-testid="drug-detail-page"]')
+  await expect(page.getByText('库存偏低', { exact: false })).toContainText('4盒 2支')
+  await expect(page.getByText('库存偏低', { exact: false })).not.toContainText('4.3')
+})
+
 test('药品保质期提醒与确认处理', async ({ page, request }) => {
   const now = new Date()
   await openApp(page, '/#/pharmacy/new', '[data-testid="drug-edit-page"]')
