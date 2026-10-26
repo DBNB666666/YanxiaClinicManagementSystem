@@ -1,8 +1,8 @@
-# 燕霞诊所管理系统 · 使用说明（v0.6.0）
+# 燕霞诊所管理系统 · 使用说明（v0.6.1）
 
 ## 1. 启动
 
-1. 解压 `YanxiaClinicManagementSystem-0.6.0-win-x64.zip` 到普通目录（如 `C:\Users\HP\Desktop` 或 `C:\Apps`）。
+1. 解压 `YanxiaClinicManagementSystem-0.6.1-win-x64.zip` 到普通目录（如 `C:\Users\HP\Desktop` 或 `C:\Apps`）。
 2. 双击 `yanxia-clinic.exe`。
 3. 不需要安装、不需要登录、不需要联网。
 
