@@ -83,6 +83,16 @@ test('面包屑显示药品层级并可跳转', async ({ page }) => {
   await page.waitForSelector('[data-testid="pharmacy-page"]')
 })
 
+test('保质期每个输入框有年月日标签', async ({ page }) => {
+  await openApp(page, '/#/pharmacy/new', '[data-testid="drug-edit-page"]')
+  await expect(page.getByTestId('production-year-label')).toHaveText('年')
+  await expect(page.getByTestId('production-month-label')).toHaveText('月')
+  await expect(page.getByTestId('production-day-label')).toContainText('日')
+  await expect(page.getByTestId('shelf-years-label')).toHaveText('年')
+  await expect(page.getByTestId('shelf-months-label')).toHaveText('月')
+  await expect(page.getByTestId('shelf-days-label')).toHaveText('天')
+})
+
 test('新建药品先填细分单位再填库存', async ({ page }) => {
   await openApp(page, '/#/pharmacy/new', '[data-testid="drug-edit-page"]')
   const subunitHeading = page.getByText('细分单位（选填）', { exact: true })

@@ -444,32 +444,38 @@ export function DrugEditPage(): React.JSX.Element {
             <div className="form-grid" style={{ marginTop: 16 }}>
               <div className="span-8">
                 <Field label="生产日期" required hint="年和月必填，日选填">
-                  <div className="flex gap-8">
-                    <TextInput
-                      type="number"
-                      placeholder="年"
-                      value={form.productionYear}
-                      data-testid="drug-production-year"
-                      onChange={(event) => setField('productionYear', event.target.value)}
-                    />
-                    <TextInput
-                      type="number"
-                      placeholder="月"
-                      min={1}
-                      max={12}
-                      value={form.productionMonth}
-                      data-testid="drug-production-month"
-                      onChange={(event) => setField('productionMonth', event.target.value)}
-                    />
-                    <TextInput
-                      type="number"
-                      placeholder="日（选填）"
-                      min={1}
-                      max={31}
-                      value={form.productionDay}
-                      data-testid="drug-production-day"
-                      onChange={(event) => setField('productionDay', event.target.value)}
-                    />
+                  <div className="date-parts">
+                    <label className="date-part">
+                      <span data-testid="production-year-label">年</span>
+                      <TextInput
+                        type="number"
+                        value={form.productionYear}
+                        data-testid="drug-production-year"
+                        onChange={(event) => setField('productionYear', event.target.value)}
+                      />
+                    </label>
+                    <label className="date-part">
+                      <span data-testid="production-month-label">月</span>
+                      <TextInput
+                        type="number"
+                        min={1}
+                        max={12}
+                        value={form.productionMonth}
+                        data-testid="drug-production-month"
+                        onChange={(event) => setField('productionMonth', event.target.value)}
+                      />
+                    </label>
+                    <label className="date-part">
+                      <span data-testid="production-day-label">日（选填）</span>
+                      <TextInput
+                        type="number"
+                        min={1}
+                        max={31}
+                        value={form.productionDay}
+                        data-testid="drug-production-day"
+                        onChange={(event) => setField('productionDay', event.target.value)}
+                      />
+                    </label>
                   </div>
                 </Field>
               </div>
@@ -482,31 +488,37 @@ export function DrugEditPage(): React.JSX.Element {
               </div>
               <div className="span-12">
                 <Field label="保质期" required hint="可组合填写年、月、天">
-                  <div className="flex gap-8">
-                    <TextInput
-                      type="number"
-                      min={0}
-                      placeholder="年"
-                      value={form.shelfYears}
-                      data-testid="drug-shelf-years"
-                      onChange={(event) => setField('shelfYears', event.target.value)}
-                    />
-                    <TextInput
-                      type="number"
-                      min={0}
-                      placeholder="月"
-                      value={form.shelfMonths}
-                      data-testid="drug-shelf-months"
-                      onChange={(event) => setField('shelfMonths', event.target.value)}
-                    />
-                    <TextInput
-                      type="number"
-                      min={0}
-                      placeholder="天"
-                      value={form.shelfDays}
-                      data-testid="drug-shelf-days"
-                      onChange={(event) => setField('shelfDays', event.target.value)}
-                    />
+                  <div className="date-parts">
+                    <label className="date-part">
+                      <span data-testid="shelf-years-label">年</span>
+                      <TextInput
+                        type="number"
+                        min={0}
+                        value={form.shelfYears}
+                        data-testid="drug-shelf-years"
+                        onChange={(event) => setField('shelfYears', event.target.value)}
+                      />
+                    </label>
+                    <label className="date-part">
+                      <span data-testid="shelf-months-label">月</span>
+                      <TextInput
+                        type="number"
+                        min={0}
+                        value={form.shelfMonths}
+                        data-testid="drug-shelf-months"
+                        onChange={(event) => setField('shelfMonths', event.target.value)}
+                      />
+                    </label>
+                    <label className="date-part">
+                      <span data-testid="shelf-days-label">天</span>
+                      <TextInput
+                        type="number"
+                        min={0}
+                        value={form.shelfDays}
+                        data-testid="drug-shelf-days"
+                        onChange={(event) => setField('shelfDays', event.target.value)}
+                      />
+                    </label>
                   </div>
                 </Field>
               </div>
