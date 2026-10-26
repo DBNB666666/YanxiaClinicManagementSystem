@@ -758,7 +758,7 @@
   position: absolute;
   z-index: 10;
   min-height: 24px;
-  cursor: move;
+  pointer-events: none;
   touch-action: none;
   user-select: none;
   outline: 1px dashed color-mix(in srgb, var(--primary) 45%, transparent);
@@ -769,7 +769,11 @@
   display: block;
   width: 100%;
   height: auto;
-  pointer-events: none;
+  cursor: move;
+}
+
+.signature-resize-handle {
+  pointer-events: auto;
 }
 
 .signature-resize-handle {
@@ -985,4 +989,14 @@
 .rx-combo-drug {
   flex: 1;
   font-weight: 500;
+}
+
+.detail-combo-row td {
+  background: var(--primary-soft);
+  font-size: 13px;
+}
+
+.detail-combo-usage {
+  margin-left: 16px;
+  color: var(--text-secondary);
 }

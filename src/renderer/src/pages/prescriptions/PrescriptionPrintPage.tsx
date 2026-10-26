@@ -163,7 +163,7 @@ export function PrescriptionPrintPage(): React.JSX.Element {
         ]}
       />
       <div className="print-toolbar">
-        <Button variant="ghost" size="sm" icon={<ArrowLeft size={16} />} onClick={() => navigate(-1)}>
+        <Button variant="ghost" size="sm" icon={<ArrowLeft size={16} />} onClick={() => navigate(details.length === 1 ? `/prescriptions/${details[0].id}` : '/prescriptions')}>
           返回
         </Button>
         <span className="print-title">处方打印预览{details.length ? `（${details.length} 张）` : ''}</span>
@@ -209,7 +209,8 @@ export function PrescriptionPrintPage(): React.JSX.Element {
               className="print-frame"
               title="处方打印预览"
               srcDoc={html}
-              style={{ height: Math.max(pageCount, 1) * PRINT_PAGE_HEIGHT_PX }}
+              scrolling="no"
+              style={{ height: Math.max(pageCount, 1) * PRINT_PAGE_HEIGHT_PX + 1 }}
             />
             {canEditSignature ? (
               <div
@@ -220,10 +221,15 @@ export function PrescriptionPrintPage(): React.JSX.Element {
                   top: `${((pageCount - 1 + signatureLayout.y) / Math.max(pageCount, 1)) * 100}%`,
                   width: `${signatureLayout.width * 100}%`
                 }}
-                onPointerDown={beginSignatureGesture('move')}
                 title="拖动调整签名位置"
               >
-                <img src={settings.signatureImage} alt="拖动医师签名" draggable={false} />
+                <img
+                  src={settings.signatureImage}
+                  alt="拖动医师签名"
+                  draggable={false}
+                  onPointerDown={beginSignatureGesture('move')}
+                  style={{ pointerEvents: 'auto' }}
+                />
                 <span
                   className="signature-resize-handle"
                   data-testid="signature-resize"
