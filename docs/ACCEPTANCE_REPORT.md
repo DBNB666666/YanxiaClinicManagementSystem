@@ -1,7 +1,7 @@
-# 验收报告（v0.5.1）
+# 验收报告（v0.6.0）
 
 日期：2026-10-24
-版本：0.5.1
+版本：0.6.0
 环境：Windows 11 build 26200 / Node 24.18 / Edge headless / sql.js 1.15.1
 
 ## 1. 自动化结果
@@ -10,7 +10,7 @@
 
 命令：`npm test`
 
-结果：**9 个测试文件、46 条用例全部通过**。
+结果：**10 个测试文件、50 条用例全部通过**。
 
 | 文件 | 覆盖 |
 | --- | --- |
@@ -22,19 +22,20 @@
 | `tests/integration/pdf.test.ts` | 图片 HTML 模板、130×190mm 单张 PDF、模板图片嵌入、批量 PDF 页数 |
 | `tests/integration/persistence.test.ts` | 关闭后重新打开数据仍在 |
 | `tests/unit/prescriptionPrintLayout.test.ts` | 年龄位置、Rp 示例格式、医师签名位置 |
+| `tests/unit/expiry.test.ts` | 保质期年月天组合、按月1日计算、45天提醒与确认 |
 | `tests/integration/subunits.test.ts` | 多级细分单位、独立售价/成本、最细单位整数库存、整盒+零头显示、各层总量 |
 
 ### 1.2 UI 流程（Playwright + Edge + 真实服务）
 
 命令：`npm run test:e2e`
 
-结果：**28 条 UI 用例全部通过**。
+结果：**33 条 UI 用例全部通过**。
 
 | 文件 | 覆盖 |
 | --- | --- |
 | `theme.spec.ts` | 处方首页、三套主题切换、重启后保留 |
-| `pharmacy.spec.ts` | 列表/搜索/视图、点击卡片进详情、面包屑、新增/进货/停用、用药组合新增与编辑 |
-| `prescription.spec.ts` | 列表/详情/编辑、合并用法、切换板块保留草稿、离开清除新建草稿、面包屑、打印 |
+| `pharmacy.spec.ts` | 布局顺序、保质期提醒/确认、分类供应商建议、常用药、用药组合、新增/进货/停用 |
+| `prescription.spec.ts` | 列表/详情/编辑、常用药快速开方、组合、草稿、面包屑、打印 |
 | `finance.spec.ts` | 日/周/月/年处方费用营业额、图表、期间明细抽屉 |
 | `notification.spec.ts` | 未读红点、通知抽屉、跳转药品详情、已读消红点 |
 | `print.spec.ts` | 打印预览切换后保留处方、返回详情、图片模板、PDF、批量多页、无页脚 |
@@ -48,7 +49,7 @@
 
 结果：**通过**。
 
-- 把 v0.5.1 zip 解压到 `E:\Users\HP\Desktop\YanxiaClinicManagementSystem\.tmp\package-launch-test`（继承 Low Mandatory Level）；
+- 把 v0.6.0 zip 解压到 `E:\Users\HP\Desktop\YanxiaClinicManagementSystem\.tmp\package-launch-test`（继承 Low Mandatory Level）；
 - 运行 `启动燕霞诊所管理系统.cmd`；
 - 脚本把程序复制到 `%TEMP%\yanxia-package-test-target`（普通完整性目录）；
 - 12–20 秒内出现窗口“燕霞诊所管理系统”，并创建 `data/clinic.db`；
@@ -58,7 +59,7 @@
 
 命令：`npm run verify`
 
-结果：**通过**（typecheck + lint + 46 条测试 + 构建）。
+结果：**通过**（typecheck + lint + 50 条测试 + 构建）。
 
 ## 2. 与 PRD 验收标准的对应
 
@@ -79,10 +80,10 @@
 ## 4. 交付物
 
 - 源代码（Electron + React + TypeScript）。
-- 绿色版 zip：`release/YanxiaClinicManagementSystem-0.5.1-win-x64.zip`。
+- 绿色版 zip：`release/YanxiaClinicManagementSystem-0.6.0-win-x64.zip`。
 - 使用说明、已知问题、技术验证记录。
 - 本报告。
 
 ## 5. 结论
 
-自动化范围（46 + 28 + 1 打包启动）全部通过；核心业务、手工处方费用、营业额财务、药房库存、用药组合与组合打印、固定数量列 PDF、稳定的签名拖动/缩放、打印预览状态和处方详情已具备交付条件。系统打印/实体打印机属于目标机器手工复验项。
+自动化范围（50 + 33 + 1 打包启动）全部通过；核心业务、手工处方费用、营业额财务、药房库存、保质期提醒、常用药、用药组合与组合打印、固定数量列 PDF、签名交互和打印预览状态已具备交付条件。系统打印/实体打印机属于目标机器手工复验项。
