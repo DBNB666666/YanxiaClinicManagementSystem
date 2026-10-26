@@ -34,6 +34,11 @@ export const drugInputSchema = z.object({
   indications: z.string().trim().max(200, '适应症最多 200 字').default(''),
   costCents: z.number().int('成本必须是整数分').min(0, '成本不能小于 0'),
   priceCents: z.number().int('标价必须是整数分').min(0, '标价不能小于 0'),
+  productionDate: z.string().trim().optional(),
+  shelfLifeYears: z.number().int().min(0).optional(),
+  shelfLifeMonths: z.number().int().min(0).optional(),
+  shelfLifeDays: z.number().int().min(0).optional(),
+  expiryAckDate: z.string().trim().optional(),
   units: z.array(drugUnitInputSchema).max(6, '细分单位最多 6 级').optional()
 })
 

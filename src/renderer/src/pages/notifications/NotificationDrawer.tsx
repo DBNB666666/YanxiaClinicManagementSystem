@@ -81,7 +81,7 @@ export function NotificationDrawer(): React.JSX.Element {
         <EmptyState
           icon={<Bell size={22} />}
           title="暂无通知"
-          description="库存低于预警值时会在这里提醒。"
+          description="库存低于预警值或药品即将过期时会在这里提醒。"
         />
       ) : (
         <div>
@@ -97,7 +97,9 @@ export function NotificationDrawer(): React.JSX.Element {
               <span className="notification-body">
                 <span className="notification-name">{item.drugName}</span>
                 <span className="notification-meta">
-                  当前 {item.stockQty} · 预警值 {item.warningQty}
+                  {item.reason === 'expiry'
+                    ? `请注意，${item.drugName}还有一个半月过期（到期日：${item.expiryDate}）`
+                    : `当前 ${item.stockQty} · 预警值 ${item.warningQty}`}
                 </span>
                 <span className="notification-time">{formatDateTime(item.createdAt)}</span>
               </span>

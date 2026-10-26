@@ -130,6 +130,37 @@ test('新增药品、进货与停用', async ({ page, request }) => {
   expect(stopped.status).toBe('stopped')
 })
 
+test('药品保质期提醒与确认处理', async ({ page, request }) => {
+  const now = new Date()
+  await openApp(page, '/#/pharmacy/new', '[data-testid="drug-edit-page"]')
+  await page.getByTestId('drug-name').fill('临期测试药')
+  await page.getByTestId('drug-unit').fill('盒')
+  await page.getByTestId('stock-adjust-open').click()
+  await page.getByTestId('stock-base').fill('5')
+  await page.getByTestId('stock-adjust-save').click()
+  await page.getByTestId('drug-warning').fill('1')
+  await page.getByTestId('drug-production-year').fill(String(now.getFullYear()))
+  await page.getByTestId('drug-production-month').fill(String(now.getMonth() + 1))
+  await page.getByTestId('drug-production-day').fill('')
+  await page.getByTestId('drug-shelf-years').fill('0')
+  await page.getByTestId('drug-shelf-months').fill('0')
+  await page.getByTestId('drug-shelf-days').fill('20')
+  await page.getByTestId('save-drug').click()
+  await page.waitForSelector('[data-testid="drug-detail-page"]')
+  await expect(page.getByTestId('expiry-banner')).toBeVisible()
+
+  const notifications = await apiCall<{ items: { drugName: string; reason: string }[] }>(
+    request,
+    'notifications',
+    'list'
+  )
+  expect(notifications.items.some((item) => item.drugName === '临期测试药' && item.reason === 'expiry')).toBe(true)
+
+  await page.getByTestId('confirm-expiry').click()
+  await page.waitForTimeout(200)
+  await expect(page.getByTestId('expiry-banner')).toHaveCount(0)
+})
+
 test('已用药品删除时自动转为停用', async ({ page, request }) => {
   await openApp(page, '/#/pharmacy', '[data-testid="pharmacy-page"]')
   await page.getByTestId('drug-card-1').getByText('删除').click()

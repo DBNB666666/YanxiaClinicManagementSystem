@@ -29,6 +29,13 @@ export interface Drug {
   stockQty: number
   stockUnits: number
   warningQty: number
+  productionDate: string
+  shelfLifeYears: number
+  shelfLifeMonths: number
+  shelfLifeDays: number
+  expiryDate: string
+  expiryAckDate: string
+  expiring: boolean
   category: string
   supplier: string
   indications: string
@@ -51,6 +58,11 @@ export interface DrugInput {
   indications: string
   costCents: number
   priceCents: number
+  productionDate?: string
+  shelfLifeYears?: number
+  shelfLifeMonths?: number
+  shelfLifeDays?: number
+  expiryAckDate?: string
   units?: DrugUnitInput[]
 }
 
@@ -184,6 +196,7 @@ export interface Notification {
   drugName: string
   stockQty: number
   warningQty: number
+  expiryDate: string
   reason: string
   createdAt: string
   readAt: string | null

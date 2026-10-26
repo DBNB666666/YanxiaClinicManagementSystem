@@ -43,6 +43,7 @@ export function PharmacyListPage(): React.JSX.Element {
 
   const items = data?.items ?? []
   const total = data?.total ?? 0
+  const expiringCount = items.filter((drug) => drug.expiring).length
 
   const refreshAll = (): void => {
     refresh()
@@ -151,6 +152,12 @@ export function PharmacyListPage(): React.JSX.Element {
         </div>
       </div>
 
+      {expiringCount > 0 ? (
+        <Banner tone="warning">
+          请注意，有 {expiringCount} 种药品还有一个半月过期
+        </Banner>
+      ) : null}
+
       {lowStock.data && lowStock.data.count > 0 && filter !== 'low' ? (
         <Banner
           tone="warning"
@@ -213,6 +220,8 @@ export function PharmacyListPage(): React.JSX.Element {
                     <Tag tone="muted">已停用</Tag>
                   ) : low ? (
                     <Tag tone="warning">库存预警</Tag>
+                  ) : drug.expiring ? (
+                    <Tag tone="warning">即将过期</Tag>
                   ) : null}
                 </div>
                 <div className="pharmacy-sub">入库：{drug.inboundDate}</div>

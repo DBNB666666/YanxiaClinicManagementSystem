@@ -58,6 +58,19 @@ export function DrugDetailPage(): React.JSX.Element {
 
   const low = drug.status === 'active' && drug.stockQty <= drug.warningQty
 
+  const confirmExpiry = async (): Promise<void> => {
+    setBusy(true)
+    try {
+      await window.api.drugs.confirmExpiry(drug.id)
+      showToast('已确认处理过期提醒')
+      await load()
+    } catch (cause) {
+      showToast((cause as Error).message, 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div data-testid="drug-detail-page">
       <Breadcrumbs
@@ -110,6 +123,27 @@ export function DrugDetailPage(): React.JSX.Element {
         }
       />
 
+      {drug.expiring ? (
+        <Banner
+          tone="warning"
+          action={
+            <Button
+              variant="ghost"
+              size="sm"
+              loading={busy}
+              onClick={() => void confirmExpiry()}
+              data-testid="confirm-expiry"
+            >
+              已更换 / 已处理
+            </Button>
+          }
+        >
+          <span data-testid="expiry-banner">
+            请注意，{drug.name}还有一个半月过期（到期日：{drug.expiryDate}）
+          </span>
+        </Banner>
+      ) : null}
+
       {low ? (
         <Banner
           tone="warning"
@@ -153,6 +187,22 @@ export function DrugDetailPage(): React.JSX.Element {
               <div className="info-item">
                 <span className="info-label">开药次数</span>
                 <span className="info-value">{drug.usageCount} 次</span>
+              </div>
+              <div className="info-item">
+                <span className="info-label">生产日期</span>
+                <span className="info-value">{drug.productionDate || '—'}</span>
+              </div>
+              <div className="info-item">
+                <span className="info-label">保质期</span>
+                <span className="info-value">
+                  {drug.shelfLifeYears || drug.shelfLifeMonths || drug.shelfLifeDays
+                    ? `${drug.shelfLifeYears}年${drug.shelfLifeMonths}月${drug.shelfLifeDays}天`
+                    : '—'}
+                </span>
+              </div>
+              <div className="info-item">
+                <span className="info-label">到期日期</span>
+                <span className="info-value">{drug.expiryDate || '—'}</span>
               </div>
               <div className="info-item">
                 <span className="info-label">状态</span>

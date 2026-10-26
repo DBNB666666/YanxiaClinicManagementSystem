@@ -11,6 +11,7 @@ export const IPC = {
   drugsRemove: 'drugs:remove',
   drugsPurchase: 'drugs:purchase',
   drugsLowStockCount: 'drugs:lowStockCount',
+  drugsConfirmExpiry: 'drugs:confirmExpiry',
   combosList: 'combos:list',
   combosGet: 'combos:get',
   combosCreate: 'combos:create',

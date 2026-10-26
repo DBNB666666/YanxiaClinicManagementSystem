@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { AppError } from '@shared/result'
+import { todayIso } from '@shared/date'
 import type { PrescriptionInput } from '@shared/types/models'
 import { createTestContext, P1, P2, P3, seedBase, type TestContext } from '../helpers/testStore'
 
@@ -30,6 +31,37 @@ function simplePrescription(overrides: Partial<PrescriptionInput> = {}): Prescri
 }
 
 describe('药品', () => {
+  it('保质期到期生成提醒，确认处理后消失', () => {
+    const created = ctx.service.createDrug({
+      name: '临期药品',
+      unit: '盒',
+      inboundDate: todayIso(),
+      stockQty: 5,
+      warningQty: 1,
+      category: '',
+      supplier: '',
+      indications: '',
+      costCents: 0,
+      priceCents: 0,
+      productionDate: todayIso(),
+      shelfLifeDays: 30
+    })
+    const drug = ctx.service.getDrug(created.id)
+    expect(drug.expiryDate).not.toBe('')
+    expect(drug.expiring).toBe(true)
+    const notifications = ctx.service.listNotifications()
+    const expiry = notifications.items.find(
+      (item) => item.drugId === created.id && item.reason === 'expiry'
+    )
+    expect(expiry).toBeDefined()
+    expect(expiry!.expiryDate).toBe(drug.expiryDate)
+
+    ctx.service.confirmDrugExpiry(created.id)
+    expect(ctx.service.getDrug(created.id).expiring).toBe(false)
+    const after = ctx.service.listNotifications().items.find((item) => item.id === expiry!.id)
+    expect(after?.readAt).toBeTruthy()
+  })
+
   it('新增、列表、搜索与低库存筛选', () => {
     const list = ctx.service.listDrugs({ page: 1, pageSize: 20 })
     expect(list.total).toBe(4)

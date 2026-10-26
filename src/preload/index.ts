@@ -28,7 +28,8 @@ const api: ClinicApi = {
     setStatus: (id, status) => invoke(IPC.drugsSetStatus, { id, status }),
     remove: (id) => invoke(IPC.drugsRemove, id),
     purchase: (input) => invoke(IPC.drugsPurchase, input),
-    lowStockCount: () => invoke(IPC.drugsLowStockCount)
+    lowStockCount: () => invoke(IPC.drugsLowStockCount),
+    confirmExpiry: (id) => invoke(IPC.drugsConfirmExpiry, id)
   },
   combos: {
     list: () => invoke(IPC.combosList),

@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react'
 import type { DrugInput, DrugUnitInput } from '@shared/types/models'
 import { centsToInput, toCents } from '@shared/money'
 import { todayIso } from '@shared/date'
+import { computeExpiryDate, parseProductionDate } from '@shared/expiry'
 import {
   Button,
   ConfirmDialog,
@@ -20,6 +21,12 @@ import { formatDrugStock } from '@shared/drugUnits'
 interface DrugForm {
   name: string
   inboundDate: string
+  productionYear: string
+  productionMonth: string
+  productionDay: string
+  shelfYears: string
+  shelfMonths: string
+  shelfDays: string
   stockQty: string
   unit: string
   warningQty: string
@@ -41,6 +48,12 @@ function emptyForm(): DrugForm {
   return {
     name: '',
     inboundDate: todayIso(),
+    productionYear: String(new Date().getFullYear()),
+    productionMonth: String(new Date().getMonth() + 1).padStart(2, '0'),
+    productionDay: '',
+    shelfYears: '1',
+    shelfMonths: '0',
+    shelfDays: '0',
     stockQty: '0',
     unit: '盒',
     warningQty: '5',
@@ -90,6 +103,18 @@ export function DrugEditPage(): React.JSX.Element {
         setForm({
           name: drug.name,
           inboundDate: drug.inboundDate,
+          productionYear: parseProductionDate(drug.productionDate)?.year
+            ? String(parseProductionDate(drug.productionDate)!.year)
+            : '',
+          productionMonth: parseProductionDate(drug.productionDate)?.month
+            ? String(parseProductionDate(drug.productionDate)!.month).padStart(2, '0')
+            : '',
+          productionDay: parseProductionDate(drug.productionDate)?.day
+            ? String(parseProductionDate(drug.productionDate)!.day).padStart(2, '0')
+            : '',
+          shelfYears: String(drug.shelfLifeYears ?? 0),
+          shelfMonths: String(drug.shelfLifeMonths ?? 0),
+          shelfDays: String(drug.shelfLifeDays ?? 0),
           stockQty: String(drug.stockQty),
           unit: drug.unit,
           warningQty: String(drug.warningQty),
@@ -135,6 +160,17 @@ export function DrugEditPage(): React.JSX.Element {
   }))
   const totalFactor = displayUnits.reduce((total, unit) => total * unit.factor, 1)
   const stockUnits = Math.round(Number(form.stockQty || '0') * totalFactor)
+  const productionDatePreview =
+    form.productionYear && form.productionMonth
+      ? `${form.productionYear.padStart(4, '0')}-${form.productionMonth.padStart(2, '0')}${
+          form.productionDay ? `-${form.productionDay.padStart(2, '0')}` : ''
+        }`
+      : ''
+  const expiryPreview = computeExpiryDate(productionDatePreview, {
+    years: Number(form.shelfYears || 0),
+    months: Number(form.shelfMonths || 0),
+    days: Number(form.shelfDays || 0)
+  })
   const stockLabel = formatDrugStock({
     unit: form.unit || '单位',
     stockQty: stockUnits / totalFactor,
@@ -187,6 +223,33 @@ export function DrugEditPage(): React.JSX.Element {
       showToast('请填写药品名称和单位', 'warning')
       return
     }
+    const productionYear = Number(form.productionYear)
+    const productionMonth = Number(form.productionMonth)
+    const productionDay = form.productionDay ? Number(form.productionDay) : null
+    const shelfYears = Number(form.shelfYears || 0)
+    const shelfMonths = Number(form.shelfMonths || 0)
+    const shelfDays = Number(form.shelfDays || 0)
+    const hasProduction = Boolean(form.productionYear || form.productionMonth || form.productionDay)
+    if (!editId || hasProduction) {
+      if (
+        !Number.isInteger(productionYear) ||
+        productionYear < 1900 ||
+        !Number.isInteger(productionMonth) ||
+        productionMonth < 1 ||
+        productionMonth > 12
+      ) {
+        showToast('生产日期必须填写年和月', 'warning')
+        return
+      }
+      if (productionDay !== null && (!Number.isInteger(productionDay) || productionDay < 1 || productionDay > 31)) {
+        showToast('生产日填写不正确', 'warning')
+        return
+      }
+      if (shelfYears + shelfMonths + shelfDays <= 0) {
+        showToast('请填写保质期', 'warning')
+        return
+      }
+    }
     const stockQty = Number(form.stockQty)
     const warningQty = Number(form.warningQty)
     if (!Number.isFinite(stockQty) || stockQty < 0) {
@@ -228,6 +291,14 @@ export function DrugEditPage(): React.JSX.Element {
       indications: form.indications.trim(),
       costCents,
       priceCents,
+      productionDate: hasProduction
+        ? `${productionYear}-${String(productionMonth).padStart(2, '0')}${
+            productionDay ? `-${String(productionDay).padStart(2, '0')}` : ''
+          }`
+        : '',
+      shelfLifeYears: shelfYears,
+      shelfLifeMonths: shelfMonths,
+      shelfLifeDays: shelfDays,
       units
     }
     try {
@@ -335,6 +406,80 @@ export function DrugEditPage(): React.JSX.Element {
                     placeholder="如：华康医药"
                     onChange={(event) => setField('supplier', event.target.value)}
                   />
+                </Field>
+              </div>
+            </div>
+          </section>
+
+          <section className="form-section" style={{ marginTop: 16 }}>
+            <h2 className="form-section-title">保质期</h2>
+            <div className="form-grid" style={{ marginTop: 16 }}>
+              <div className="span-8">
+                <Field label="生产日期" required hint="年和月必填，日选填">
+                  <div className="flex gap-8">
+                    <TextInput
+                      type="number"
+                      placeholder="年"
+                      value={form.productionYear}
+                      data-testid="drug-production-year"
+                      onChange={(event) => setField('productionYear', event.target.value)}
+                    />
+                    <TextInput
+                      type="number"
+                      placeholder="月"
+                      min={1}
+                      max={12}
+                      value={form.productionMonth}
+                      data-testid="drug-production-month"
+                      onChange={(event) => setField('productionMonth', event.target.value)}
+                    />
+                    <TextInput
+                      type="number"
+                      placeholder="日（选填）"
+                      min={1}
+                      max={31}
+                      value={form.productionDay}
+                      data-testid="drug-production-day"
+                      onChange={(event) => setField('productionDay', event.target.value)}
+                    />
+                  </div>
+                </Field>
+              </div>
+              <div className="span-4">
+                <Field label="到期日期">
+                  <span className="stock-readonly-value" data-testid="drug-expiry-preview">
+                    {expiryPreview || '—'}
+                  </span>
+                </Field>
+              </div>
+              <div className="span-12">
+                <Field label="保质期" required hint="可组合填写年、月、天">
+                  <div className="flex gap-8">
+                    <TextInput
+                      type="number"
+                      min={0}
+                      placeholder="年"
+                      value={form.shelfYears}
+                      data-testid="drug-shelf-years"
+                      onChange={(event) => setField('shelfYears', event.target.value)}
+                    />
+                    <TextInput
+                      type="number"
+                      min={0}
+                      placeholder="月"
+                      value={form.shelfMonths}
+                      data-testid="drug-shelf-months"
+                      onChange={(event) => setField('shelfMonths', event.target.value)}
+                    />
+                    <TextInput
+                      type="number"
+                      min={0}
+                      placeholder="天"
+                      value={form.shelfDays}
+                      data-testid="drug-shelf-days"
+                      onChange={(event) => setField('shelfDays', event.target.value)}
+                    />
+                  </div>
                 </Field>
               </div>
             </div>

@@ -135,6 +135,7 @@ async function dispatch(ns: string, method: string, args: unknown[]): Promise<un
     if (method === 'remove') return service.deleteDrug(Number(args[0]))
     if (method === 'purchase') return service.purchaseDrug(args[0] as never)
     if (method === 'lowStockCount') return service.lowStockCount()
+    if (method === 'confirmExpiry') return service.confirmDrugExpiry(Number(args[0]))
   }
   if (ns === 'combos') {
     if (method === 'list') return service.listCombos()

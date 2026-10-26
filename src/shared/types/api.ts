@@ -42,6 +42,7 @@ export interface ClinicApi {
       costCents: number
     }>
     lowStockCount(): Promise<{ count: number }>
+    confirmExpiry(id: number): Promise<{ id: number }>
   }
   combos: {
     list(): Promise<MedicationCombo[]>

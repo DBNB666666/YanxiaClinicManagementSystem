@@ -30,6 +30,7 @@ import { AppError } from '../../shared/result'
 import { formatCents, multiplyCents } from '../../shared/money'
 import { getGroupLabel, getPeriodRange, nowIso, formatDateTime } from '../../shared/date'
 import { formatDrugStock, totalUnitFactor } from '../../shared/drugUnits'
+import { computeExpiryDate, isExpiryWarning } from '../../shared/expiry'
 import {
   drugInputSchema,
   drugListQuerySchema,
@@ -49,6 +50,12 @@ interface DrugRow {
   name: string
   unit: string
   inbound_date: string
+  production_date: string
+  shelf_life_years: number
+  shelf_life_months: number
+  shelf_life_days: number
+  expiry_date: string
+  expiry_ack_date: string
   stock_qty: number
   stock_units: number
   warning_qty: number
@@ -143,6 +150,7 @@ interface NotificationRow {
   drug_name: string
   stock_qty: number
   warning_qty: number
+  expiry_date: string
   reason: string
   created_at: string
   read_at: string | null
@@ -181,6 +189,13 @@ function mapDrug(row: DrugRow, units: DrugUnitRow[] = []): Drug {
     unit: row.unit,
     units: units.map(mapDrugUnit),
     inboundDate: row.inbound_date,
+    productionDate: row.production_date ?? '',
+    shelfLifeYears: Number(row.shelf_life_years ?? 0),
+    shelfLifeMonths: Number(row.shelf_life_months ?? 0),
+    shelfLifeDays: Number(row.shelf_life_days ?? 0),
+    expiryDate: row.expiry_date ?? '',
+    expiryAckDate: row.expiry_ack_date ?? '',
+    expiring: isExpiryWarning(row.expiry_date ?? '', row.expiry_ack_date ?? ''),
     stockQty: Number(row.stock_qty),
     stockUnits: Number(row.stock_units ?? 0),
     warningQty: Number(row.warning_qty),
@@ -256,6 +271,7 @@ function mapNotification(row: NotificationRow): Notification {
     drugName: row.drug_name,
     stockQty: Number(row.stock_qty),
     warningQty: Number(row.warning_qty),
+    expiryDate: row.expiry_date ?? '',
     reason: row.reason,
     createdAt: row.created_at,
     readAt: row.read_at
@@ -349,15 +365,28 @@ export class ClinicService {
     const now = nowIso()
     const units = drug.units ?? []
     const stockUnits = Math.round(drug.stockQty * totalUnitFactor(units))
+    const productionDate = drug.productionDate ?? ''
+    const shelfLife = {
+      years: drug.shelfLifeYears ?? 0,
+      months: drug.shelfLifeMonths ?? 0,
+      days: drug.shelfLifeDays ?? 0
+    }
+    const expiryDate = computeExpiryDate(productionDate, shelfLife)
     const id = this.store.insert(
       `INSERT INTO drugs
-        (name, unit, inbound_date, stock_qty, stock_units, warning_qty, category, supplier, indications,
-         cost_cents, price_cents, status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`,
+        (name, unit, inbound_date, production_date, shelf_life_years, shelf_life_months,
+         shelf_life_days, expiry_date, expiry_ack_date, stock_qty, stock_units, warning_qty,
+         category, supplier, indications, cost_cents, price_cents, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`,
       [
         drug.name,
         drug.unit,
         drug.inboundDate,
+        productionDate,
+        shelfLife.years,
+        shelfLife.months,
+        shelfLife.days,
+        expiryDate,
         drug.stockQty,
         stockUnits,
         drug.warningQty,
@@ -372,6 +401,7 @@ export class ClinicService {
     )
     this.saveDrugUnits(id, units)
     this.syncDrugNotification(id)
+    this.syncExpiryNotification(id)
     this.onDataChanged?.()
     return { id }
   }
@@ -383,14 +413,33 @@ export class ClinicService {
     if (!existing) throw new AppError('NOT_FOUND', '药品不存在')
     const units = drug.units ?? this.getDrugUnits(safeId)
     const stockUnits = Math.round(drug.stockQty * totalUnitFactor(units))
+    const productionDate = drug.productionDate ?? ''
+    const shelfLife = {
+      years: drug.shelfLifeYears ?? 0,
+      months: drug.shelfLifeMonths ?? 0,
+      days: drug.shelfLifeDays ?? 0
+    }
+    const expiryDate = computeExpiryDate(productionDate, shelfLife)
+    const expiryAckDate =
+      expiryDate && expiryDate === existing.expiry_date
+        ? drug.expiryAckDate ?? existing.expiry_ack_date
+        : ''
     this.store.run(
-      `UPDATE drugs SET name = ?, unit = ?, inbound_date = ?, stock_qty = ?, stock_units = ?,
-         warning_qty = ?, category = ?, supplier = ?, indications = ?, cost_cents = ?,
-         price_cents = ?, updated_at = ? WHERE id = ?`,
+      `UPDATE drugs SET name = ?, unit = ?, inbound_date = ?, production_date = ?,
+         shelf_life_years = ?, shelf_life_months = ?, shelf_life_days = ?, expiry_date = ?,
+         expiry_ack_date = ?, stock_qty = ?, stock_units = ?, warning_qty = ?, category = ?,
+         supplier = ?, indications = ?, cost_cents = ?, price_cents = ?, updated_at = ?
+       WHERE id = ?`,
       [
         drug.name,
         drug.unit,
         drug.inboundDate,
+        productionDate,
+        shelfLife.years,
+        shelfLife.months,
+        shelfLife.days,
+        expiryDate,
+        expiryAckDate,
         drug.stockQty,
         stockUnits,
         drug.warningQty,
@@ -405,6 +454,7 @@ export class ClinicService {
     )
     if (drug.units) this.saveDrugUnits(safeId, drug.units)
     this.syncDrugNotification(safeId)
+    this.syncExpiryNotification(safeId)
     this.onDataChanged?.()
     return { id: safeId }
   }
@@ -1166,6 +1216,7 @@ export class ClinicService {
   // ---------- 通知 ----------
 
   listNotifications(): { items: Notification[]; unreadCount: number } {
+    this.syncAllNotifications()
     const rows = this.store.queryAll<NotificationRow>(
       'SELECT * FROM notifications ORDER BY created_at DESC, id DESC LIMIT 100'
     )
@@ -1176,6 +1227,7 @@ export class ClinicService {
   }
 
   unreadNotificationCount(): { count: number } {
+    this.syncAllNotifications()
     const row = this.store.queryOne<{ count: number }>(
       'SELECT COUNT(*) AS count FROM notifications WHERE read_at IS NULL'
     )
@@ -1199,12 +1251,65 @@ export class ClinicService {
   }
 
   syncAllNotifications(): void {
-    const drugs = this.store.queryAll<DrugRow>(
-      "SELECT * FROM drugs WHERE status = 'active' AND stock_qty <= warning_qty"
-    )
+    const drugs = this.store.queryAll<DrugRow>("SELECT * FROM drugs WHERE status = 'active'")
     for (const drug of drugs) {
       this.syncDrugNotification(Number(drug.id))
+      this.syncExpiryNotification(Number(drug.id))
     }
+  }
+
+  confirmDrugExpiry(id: number): { id: number } {
+    const safeId = idSchema.parse(id)
+    const drug = this.store.queryOne<DrugRow>('SELECT * FROM drugs WHERE id = ?', [safeId])
+    if (!drug) throw new AppError('NOT_FOUND', '药品不存在')
+    if (drug.expiry_date) {
+      this.store.run('UPDATE drugs SET expiry_ack_date = ?, updated_at = ? WHERE id = ?', [
+        drug.expiry_date,
+        nowIso(),
+        safeId
+      ])
+      this.store.run(
+        "UPDATE notifications SET read_at = ? WHERE drug_id = ? AND reason = 'expiry' AND read_at IS NULL",
+        [nowIso(), safeId]
+      )
+    }
+    this.onDataChanged?.()
+    return { id: safeId }
+  }
+
+  private syncExpiryNotification(drugId: number): void {
+    const drug = this.store.queryOne<DrugRow>('SELECT * FROM drugs WHERE id = ?', [drugId])
+    const now = nowIso()
+    if (!drug || drug.status !== 'active' || !drug.expiry_date) return
+    const shouldAlert = isExpiryWarning(drug.expiry_date, drug.expiry_ack_date)
+    if (!shouldAlert) {
+      this.store.run(
+        "UPDATE notifications SET read_at = ? WHERE drug_id = ? AND reason = 'expiry' AND read_at IS NULL",
+        [now, drugId]
+      )
+      return
+    }
+    const same = this.store.queryOne<{ count: number }>(
+      "SELECT COUNT(*) AS count FROM notifications WHERE drug_id = ? AND reason = 'expiry' AND expiry_date = ? AND read_at IS NULL",
+      [drugId, drug.expiry_date]
+    )
+    if (Number(same?.count ?? 0) > 0) return
+    this.store.run(
+      "UPDATE notifications SET read_at = ? WHERE drug_id = ? AND reason = 'expiry' AND read_at IS NULL",
+      [now, drugId]
+    )
+    this.store.insert(
+      `INSERT INTO notifications (drug_id, drug_name, stock_qty, warning_qty, expiry_date, reason, created_at)
+       VALUES (?, ?, ?, ?, ?, 'expiry', ?)`,
+      [
+        drugId,
+        drug.name,
+        Number(drug.stock_qty),
+        Number(drug.warning_qty),
+        drug.expiry_date,
+        now
+      ]
+    )
   }
 
   private syncDrugNotification(drugId: number): void {
@@ -1213,18 +1318,18 @@ export class ClinicService {
     const now = nowIso()
     if (Number(drug.stock_qty) > Number(drug.warning_qty)) {
       this.store.run(
-        'UPDATE notifications SET read_at = ? WHERE drug_id = ? AND read_at IS NULL',
+        "UPDATE notifications SET read_at = ? WHERE drug_id = ? AND reason = 'stock_low' AND read_at IS NULL",
         [now, drugId]
       )
       return
     }
     const unread = this.store.queryOne<{ count: number }>(
-      'SELECT COUNT(*) AS count FROM notifications WHERE drug_id = ? AND read_at IS NULL',
+      "SELECT COUNT(*) AS count FROM notifications WHERE drug_id = ? AND reason = 'stock_low' AND read_at IS NULL",
       [drugId]
     )
     if (Number(unread?.count ?? 0) > 0) return
     const latest = this.store.queryOne<{ created_at: string }>(
-      'SELECT created_at FROM notifications WHERE drug_id = ? ORDER BY created_at DESC, id DESC LIMIT 1',
+      "SELECT created_at FROM notifications WHERE drug_id = ? AND reason = 'stock_low' ORDER BY created_at DESC, id DESC LIMIT 1",
       [drugId]
     )
     const today = localDateOf(now)

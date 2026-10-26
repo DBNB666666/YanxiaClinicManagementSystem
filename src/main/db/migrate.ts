@@ -17,8 +17,8 @@ export function migrate(db: SqlDatabase): number {
   try {
     if (version < 1) {
       db.exec(SCHEMA_SQL)
-      db.run('PRAGMA user_version = 5')
-      version = 5
+      db.run('PRAGMA user_version = 6')
+      version = 6
     } else {
       if (version < 2) {
         db.exec(`
@@ -84,7 +84,18 @@ export function migrate(db: SqlDatabase): number {
         db.run('PRAGMA user_version = 5')
         version = 5
       }
-      db.run('PRAGMA user_version = 5')
+      if (version < 6) {
+        db.run("ALTER TABLE drugs ADD COLUMN production_date TEXT NOT NULL DEFAULT ''")
+        db.run('ALTER TABLE drugs ADD COLUMN shelf_life_years INTEGER NOT NULL DEFAULT 0')
+        db.run('ALTER TABLE drugs ADD COLUMN shelf_life_months INTEGER NOT NULL DEFAULT 0')
+        db.run('ALTER TABLE drugs ADD COLUMN shelf_life_days INTEGER NOT NULL DEFAULT 0')
+        db.run("ALTER TABLE drugs ADD COLUMN expiry_date TEXT NOT NULL DEFAULT ''")
+        db.run("ALTER TABLE drugs ADD COLUMN expiry_ack_date TEXT NOT NULL DEFAULT ''")
+        db.run("ALTER TABLE notifications ADD COLUMN expiry_date TEXT NOT NULL DEFAULT ''")
+        db.run('PRAGMA user_version = 6')
+        version = 6
+      }
+      db.run('PRAGMA user_version = 6')
     }
     db.run('COMMIT')
     return version
