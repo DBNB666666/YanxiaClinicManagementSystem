@@ -42,6 +42,7 @@ export interface ClinicApi {
       costCents: number
     }>
     lowStockCount(): Promise<{ count: number }>
+    suggestions(): Promise<{ categories: string[]; suppliers: string[] }>
     confirmExpiry(id: number): Promise<{ id: number }>
   }
   combos: {

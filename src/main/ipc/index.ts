@@ -51,6 +51,7 @@ export function registerIpc({ service, dataDir, getAppInfo }: RegisterOptions): 
   ipcMain.handle(IPC.drugsRemove, wrapWithArg((id: number) => service.deleteDrug(id)))
   ipcMain.handle(IPC.drugsPurchase, wrapWithArg((input) => service.purchaseDrug(input)))
   ipcMain.handle(IPC.drugsLowStockCount, wrap(() => service.lowStockCount()))
+  ipcMain.handle(IPC.drugsSuggestions, wrap(() => service.getDrugSuggestions()))
   ipcMain.handle(IPC.drugsConfirmExpiry, wrapWithArg((id: number) => service.confirmDrugExpiry(id)))
 
   ipcMain.handle(IPC.combosList, wrap(() => service.listCombos()))

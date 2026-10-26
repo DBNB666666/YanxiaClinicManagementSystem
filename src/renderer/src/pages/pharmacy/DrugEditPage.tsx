@@ -81,6 +81,8 @@ export function DrugEditPage(): React.JSX.Element {
   const backTarget = editId ? `/pharmacy/${editId}` : '/pharmacy'
   const [form, setForm] = useState<DrugForm>(emptyForm)
   const [subunits, setSubunits] = useState<SubunitForm[]>([])
+  const [categorySuggestions, setCategorySuggestions] = useState<string[]>([])
+  const [supplierSuggestions, setSupplierSuggestions] = useState<string[]>([])
   const [stockOpen, setStockOpen] = useState(false)
   const [stockBaseDraft, setStockBaseDraft] = useState('0')
   const [stockLooseDraft, setStockLooseDraft] = useState<string[]>([])
@@ -91,6 +93,13 @@ export function DrugEditPage(): React.JSX.Element {
   const [leaveOpen, setLeaveOpen] = useState(false)
 
   useEffect(() => {
+    window.api.drugs
+      .suggestions()
+      .then((result) => {
+        setCategorySuggestions(result.categories)
+        setSupplierSuggestions(result.suppliers)
+      })
+      .catch(() => undefined)
     if (!editId) {
       setLoading(false)
       return
@@ -393,7 +402,9 @@ export function DrugEditPage(): React.JSX.Element {
                   <TextInput
                     value={form.category}
                     maxLength={50}
+                    list="category-options"
                     placeholder="如：抗生素"
+                    data-testid="drug-category"
                     onChange={(event) => setField('category', event.target.value)}
                   />
                 </Field>
@@ -403,7 +414,9 @@ export function DrugEditPage(): React.JSX.Element {
                   <TextInput
                     value={form.supplier}
                     maxLength={50}
+                    list="supplier-options"
                     placeholder="如：华康医药"
+                    data-testid="drug-supplier"
                     onChange={(event) => setField('supplier', event.target.value)}
                   />
                 </Field>
@@ -631,6 +644,16 @@ export function DrugEditPage(): React.JSX.Element {
         </div>
       )}
 
+      <datalist id="category-options">
+        {categorySuggestions.map((value) => (
+          <option key={value} value={value} />
+        ))}
+      </datalist>
+      <datalist id="supplier-options">
+        {supplierSuggestions.map((value) => (
+          <option key={value} value={value} />
+        ))}
+      </datalist>
       <datalist id="unit-options">
         {['盒', '包', '袋', '瓶', '支', '片', '粒', '毫升'].map((unit) => (
           <option key={unit} value={unit} />

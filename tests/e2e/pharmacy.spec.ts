@@ -130,6 +130,18 @@ test('新增药品、进货与停用', async ({ page, request }) => {
   expect(stopped.status).toBe('stopped')
 })
 
+test('药品分类和供应商提供历史输入建议', async ({ page }) => {
+  await openApp(page, '/#/pharmacy/new', '[data-testid="drug-edit-page"]')
+  const categories = await page.locator('#category-options option').evaluateAll((nodes) =>
+    nodes.map((node) => (node as HTMLOptionElement).value)
+  )
+  const suppliers = await page.locator('#supplier-options option').evaluateAll((nodes) =>
+    nodes.map((node) => (node as HTMLOptionElement).value)
+  )
+  expect(categories).toContain('抗生素')
+  expect(suppliers).toContain('华康医药')
+})
+
 test('药品保质期提醒与确认处理', async ({ page, request }) => {
   const now = new Date()
   await openApp(page, '/#/pharmacy/new', '[data-testid="drug-edit-page"]')

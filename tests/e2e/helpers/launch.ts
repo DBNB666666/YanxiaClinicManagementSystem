@@ -5,7 +5,7 @@ const API_SCRIPT = `
   const namespaces = {
     app: ['getInfo'],
     settings: ['get', 'set'],
-    drugs: ['list', 'get', 'create', 'update', 'setStatus', 'remove', 'purchase', 'lowStockCount', 'confirmExpiry'],
+    drugs: ['list', 'get', 'create', 'update', 'setStatus', 'remove', 'purchase', 'lowStockCount', 'confirmExpiry', 'suggestions'],
     combos: ['list', 'get', 'create', 'update', 'remove'],
     prescriptions: ['list', 'get', 'create', 'update', 'remove'],
     finance: ['summary', 'details'],

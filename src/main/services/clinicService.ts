@@ -580,6 +580,20 @@ export class ClinicService {
     return result
   }
 
+  getDrugSuggestions(): { categories: string[]; suppliers: string[] } {
+    const categories = this.store
+      .queryAll<{ value: string }>(
+        "SELECT DISTINCT category AS value FROM drugs WHERE category <> '' ORDER BY category"
+      )
+      .map((row) => row.value)
+    const suppliers = this.store
+      .queryAll<{ value: string }>(
+        "SELECT DISTINCT supplier AS value FROM drugs WHERE supplier <> '' ORDER BY supplier"
+      )
+      .map((row) => row.value)
+    return { categories, suppliers }
+  }
+
   lowStockCount(): { count: number } {
     const row = this.store.queryOne<{ count: number }>(
       "SELECT COUNT(*) AS count FROM drugs WHERE status = 'active' AND stock_qty <= warning_qty"
