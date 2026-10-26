@@ -39,6 +39,7 @@ export const drugInputSchema = z.object({
   shelfLifeMonths: z.number().int().min(0).optional(),
   shelfLifeDays: z.number().int().min(0).optional(),
   expiryAckDate: z.string().trim().optional(),
+  isCommon: z.boolean().optional(),
   units: z.array(drugUnitInputSchema).max(6, '细分单位最多 6 级').optional()
 })
 
@@ -120,7 +121,7 @@ export const listQuerySchema = z.object({
 })
 
 export const drugListQuerySchema = listQuerySchema.extend({
-  filter: z.enum(['all', 'low', 'stopped']).default('all')
+  filter: z.enum(['all', 'low', 'stopped', 'common']).default('all')
 })
 
 export const prescriptionListQuerySchema = listQuerySchema.extend({

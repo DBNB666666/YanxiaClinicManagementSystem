@@ -344,6 +344,42 @@ export function PrescriptionEditPage(): React.JSX.Element {
       .slice(0, 50)
   }, [drugs, pickerQuery])
 
+  const commonDrugs = useMemo(
+    () =>
+      drugs.filter(
+        (drug) => drug.status === 'active' && drug.isCommon && !items.some((item) => item.drugId === drug.id)
+      ),
+    [drugs, items]
+  )
+
+  const addCommonDrug = (drug: Drug): void => {
+    setItems((current) => [
+      ...current,
+      {
+        key: newKey(),
+        drugId: drug.id,
+        drugName: drug.name,
+        unit: drug.unit,
+        unitChoices: drugUnitChoices(drug),
+        baseFactor: 1,
+        qty: 1,
+        usage: '',
+        frequency: '',
+        groupKey: `item-${newKey()}`,
+        groupName: '',
+        groupUsage: '',
+        unitPriceCents: drug.priceCents,
+        unitCostCents: drug.costCents,
+        amountCents: drug.priceCents,
+        stockQty: drug.stockQty,
+        stockUnits: drug.stockUnits,
+        warningQty: drug.warningQty
+      }
+    ])
+    setPickerOpen(false)
+    setDirty(true)
+  }
+
   const addSelected = (): void => {
     const chosen = drugs.filter((drug) => pickerSelected.has(drug.id))
     const existing = new Set(items.map((item) => item.drugId))
@@ -981,6 +1017,24 @@ export function PrescriptionEditPage(): React.JSX.Element {
           </div>
         }
       >
+        {commonDrugs.length > 0 ? (
+          <div className="common-drugs" data-testid="common-drugs">
+            <span className="muted" style={{ fontSize: 12 }}>
+              常用药
+            </span>
+            {commonDrugs.map((drug) => (
+              <Button
+                key={drug.id}
+                size="xs"
+                variant="secondary"
+                data-testid={`common-drug-${drug.id}`}
+                onClick={() => addCommonDrug(drug)}
+              >
+                {drug.name}
+              </Button>
+            ))}
+          </div>
+        ) : null}
         <SearchInput
           value={pickerQuery}
           onChange={setPickerQuery}
@@ -1020,7 +1074,6 @@ export function PrescriptionEditPage(): React.JSX.Element {
                       {exists ? '已添加 · ' : ''}库存 {formatDrugStock(drug)} · {drug.category || '未分类'}
                     </span>
                   </span>
-                  <span className="med-picker-price">{formatCents(drug.priceCents)}</span>
                 </label>
               )
             })

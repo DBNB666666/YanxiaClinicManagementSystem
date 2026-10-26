@@ -85,6 +85,16 @@ export function PharmacyListPage(): React.JSX.Element {
     }
   }
 
+  const toggleCommon = async (drug: Drug): Promise<void> => {
+    try {
+      await window.api.drugs.setCommon(drug.id, !drug.isCommon)
+      showToast(drug.isCommon ? `已取消常用药 ${drug.name}` : `已标记常用药 ${drug.name}`)
+      refreshAll()
+    } catch (cause) {
+      showToast((cause as Error).message, 'error')
+    }
+  }
+
   const restore = async (drug: Drug): Promise<void> => {
     try {
       await window.api.drugs.setStatus(drug.id, 'active')
@@ -144,6 +154,7 @@ export function PharmacyListPage(): React.JSX.Element {
           >
             <option value="all">全部药品</option>
             <option value="low">仅看库存预警</option>
+            <option value="common">仅看常用药</option>
             <option value="stopped">仅看停用</option>
           </Select>
         </div>
@@ -216,6 +227,7 @@ export function PharmacyListPage(): React.JSX.Element {
                   <span className="pharmacy-name">{drug.name}</span>
                 </div>
                 <div className="pharmacy-card-badge">
+                  {drug.isCommon ? <Tag tone="success">常用药</Tag> : null}
                   {drug.status === 'stopped' ? (
                     <Tag tone="muted">已停用</Tag>
                   ) : low ? (
@@ -236,6 +248,9 @@ export function PharmacyListPage(): React.JSX.Element {
                   className="pharmacy-card-actions"
                   onClick={(event) => event.stopPropagation()}
                 >
+                  <Button size="xs" variant="ghost" onClick={() => void toggleCommon(drug)}>
+                    {drug.isCommon ? '取消常用' : '设为常用'}
+                  </Button>
                   <Button size="xs" variant="ghost" onClick={() => navigate(`/pharmacy/${drug.id}/edit`)}>
                     编辑
                   </Button>

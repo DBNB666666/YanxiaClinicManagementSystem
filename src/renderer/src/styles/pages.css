@@ -1000,3 +1000,13 @@
   margin-left: 16px;
   color: var(--text-secondary);
 }
+
+.common-drugs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--divider);
+  margin-bottom: 8px;
+}

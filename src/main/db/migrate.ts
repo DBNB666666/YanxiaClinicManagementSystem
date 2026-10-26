@@ -17,8 +17,8 @@ export function migrate(db: SqlDatabase): number {
   try {
     if (version < 1) {
       db.exec(SCHEMA_SQL)
-      db.run('PRAGMA user_version = 6')
-      version = 6
+      db.run('PRAGMA user_version = 7')
+      version = 7
     } else {
       if (version < 2) {
         db.exec(`
@@ -95,7 +95,12 @@ export function migrate(db: SqlDatabase): number {
         db.run('PRAGMA user_version = 6')
         version = 6
       }
-      db.run('PRAGMA user_version = 6')
+      if (version < 7) {
+        db.run('ALTER TABLE drugs ADD COLUMN is_common INTEGER NOT NULL DEFAULT 0')
+        db.run('PRAGMA user_version = 7')
+        version = 7
+      }
+      db.run('PRAGMA user_version = 7')
     }
     db.run('COMMIT')
     return version

@@ -65,6 +65,7 @@ interface DrugRow {
   cost_cents: number
   price_cents: number
   status: 'active' | 'stopped'
+  is_common: number
   created_at: string
   updated_at: string
   usage_count: number
@@ -196,6 +197,7 @@ function mapDrug(row: DrugRow, units: DrugUnitRow[] = []): Drug {
     expiryDate: row.expiry_date ?? '',
     expiryAckDate: row.expiry_ack_date ?? '',
     expiring: isExpiryWarning(row.expiry_date ?? '', row.expiry_ack_date ?? ''),
+    isCommon: Boolean(row.is_common),
     stockQty: Number(row.stock_qty),
     stockUnits: Number(row.stock_units ?? 0),
     warningQty: Number(row.warning_qty),
@@ -304,6 +306,8 @@ export class ClinicService {
 
     if (query.filter === 'low') {
       where.push("d.status = 'active' AND d.stock_qty <= d.warning_qty")
+    } else if (query.filter === 'common') {
+      where.push("d.status = 'active' AND d.is_common = 1")
     } else if (query.filter === 'stopped') {
       where.push("d.status = 'stopped'")
     } else {
@@ -376,8 +380,8 @@ export class ClinicService {
       `INSERT INTO drugs
         (name, unit, inbound_date, production_date, shelf_life_years, shelf_life_months,
          shelf_life_days, expiry_date, expiry_ack_date, stock_qty, stock_units, warning_qty,
-         category, supplier, indications, cost_cents, price_cents, status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`,
+         category, supplier, indications, cost_cents, price_cents, is_common, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`,
       [
         drug.name,
         drug.unit,
@@ -395,6 +399,7 @@ export class ClinicService {
         drug.indications,
         drug.costCents,
         drug.priceCents,
+        drug.isCommon ? 1 : 0,
         now,
         now
       ]
@@ -428,8 +433,8 @@ export class ClinicService {
       `UPDATE drugs SET name = ?, unit = ?, inbound_date = ?, production_date = ?,
          shelf_life_years = ?, shelf_life_months = ?, shelf_life_days = ?, expiry_date = ?,
          expiry_ack_date = ?, stock_qty = ?, stock_units = ?, warning_qty = ?, category = ?,
-         supplier = ?, indications = ?, cost_cents = ?, price_cents = ?, updated_at = ?
-       WHERE id = ?`,
+         supplier = ?, indications = ?, cost_cents = ?, price_cents = ?, is_common = ?,
+         updated_at = ? WHERE id = ?`,
       [
         drug.name,
         drug.unit,
@@ -592,6 +597,18 @@ export class ClinicService {
       )
       .map((row) => row.value)
     return { categories, suppliers }
+  }
+
+  setDrugCommon(id: number, isCommon: boolean): { id: number } {
+    const safeId = idSchema.parse(id)
+    const result = this.store.run('UPDATE drugs SET is_common = ?, updated_at = ? WHERE id = ?', [
+      isCommon ? 1 : 0,
+      nowIso(),
+      safeId
+    ])
+    if (result === 0) throw new AppError('NOT_FOUND', '药品不存在')
+    this.onDataChanged?.()
+    return { id: safeId }
   }
 
   lowStockCount(): { count: number } {

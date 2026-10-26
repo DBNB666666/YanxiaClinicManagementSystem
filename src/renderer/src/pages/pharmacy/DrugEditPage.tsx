@@ -35,6 +35,7 @@ interface DrugForm {
   indications: string
   cost: string
   price: string
+  isCommon: boolean
 }
 
 interface SubunitForm {
@@ -61,7 +62,8 @@ function emptyForm(): DrugForm {
     supplier: '',
     indications: '',
     cost: '0.00',
-    price: '0.00'
+    price: '0.00',
+    isCommon: false
   }
 }
 
@@ -131,7 +133,8 @@ export function DrugEditPage(): React.JSX.Element {
           supplier: drug.supplier,
           indications: drug.indications,
           cost: centsToInput(drug.costCents),
-          price: centsToInput(drug.priceCents)
+          price: centsToInput(drug.priceCents),
+          isCommon: drug.isCommon
         })
         setSubunits(
           (drug.units ?? []).map((unit) => ({
@@ -300,6 +303,7 @@ export function DrugEditPage(): React.JSX.Element {
       indications: form.indications.trim(),
       costCents,
       priceCents,
+      isCommon: form.isCommon,
       productionDate: hasProduction
         ? `${productionYear}-${String(productionMonth).padStart(2, '0')}${
             productionDay ? `-${String(productionDay).padStart(2, '0')}` : ''
@@ -420,6 +424,17 @@ export function DrugEditPage(): React.JSX.Element {
                     onChange={(event) => setField('supplier', event.target.value)}
                   />
                 </Field>
+              </div>
+              <div className="span-12">
+                <label className="checkbox-row">
+                  <input
+                    type="checkbox"
+                    checked={form.isCommon}
+                    data-testid="drug-is-common"
+                    onChange={(event) => setField('isCommon', event.target.checked)}
+                  />
+                  <span>标记为常用药，开方时优先快速调用</span>
+                </label>
               </div>
             </div>
           </section>

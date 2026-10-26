@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 6
+export const SCHEMA_VERSION = 7
 
 export const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS drugs (
@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS drugs (
   cost_cents INTEGER NOT NULL CHECK (cost_cents >= 0),
   price_cents INTEGER NOT NULL CHECK (price_cents >= 0),
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'stopped')),
+  is_common INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );

@@ -137,6 +137,14 @@ async function dispatch(ns: string, method: string, args: unknown[]): Promise<un
     if (method === 'lowStockCount') return service.lowStockCount()
     if (method === 'suggestions') return service.getDrugSuggestions()
     if (method === 'confirmExpiry') return service.confirmDrugExpiry(Number(args[0]))
+    if (method === 'setCommon') {
+      const first = args[0] as unknown
+      if (first && typeof first === 'object' && 'id' in (first as object)) {
+        const payload = first as { id: number; isCommon: boolean }
+        return service.setDrugCommon(Number(payload.id), Boolean(payload.isCommon))
+      }
+      return service.setDrugCommon(Number(args[0]), Boolean(args[1]))
+    }
   }
   if (ns === 'combos') {
     if (method === 'list') return service.listCombos()

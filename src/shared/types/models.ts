@@ -3,7 +3,7 @@ export type Gender = '男' | '女'
 export type DrugStatus = 'active' | 'stopped'
 export type FinancePeriod = 'day' | 'week' | 'month' | 'year'
 export type ViewMode = 'card' | 'list'
-export type DrugListFilter = 'all' | 'low' | 'stopped'
+export type DrugListFilter = 'all' | 'low' | 'stopped' | 'common'
 
 export interface DrugUnit {
   id: number
@@ -36,6 +36,7 @@ export interface Drug {
   expiryDate: string
   expiryAckDate: string
   expiring: boolean
+  isCommon: boolean
   category: string
   supplier: string
   indications: string
@@ -63,6 +64,7 @@ export interface DrugInput {
   shelfLifeMonths?: number
   shelfLifeDays?: number
   expiryAckDate?: string
+  isCommon?: boolean
   units?: DrugUnitInput[]
 }
 

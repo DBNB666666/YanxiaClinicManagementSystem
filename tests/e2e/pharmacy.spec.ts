@@ -130,6 +130,19 @@ test('新增药品、进货与停用', async ({ page, request }) => {
   expect(stopped.status).toBe('stopped')
 })
 
+test('药房可标记和取消常用药', async ({ page, request }) => {
+  await openApp(page, '/#/pharmacy', '[data-testid="pharmacy-page"]')
+  await page.getByTestId('drug-card-1').getByText('设为常用').click()
+  await expect(page.getByTestId('drug-card-1')).toContainText('常用药')
+  const marked = await apiCall<{ isCommon: boolean }>(request, 'drugs', 'get', [1])
+  expect(marked.isCommon).toBe(true)
+  await page.getByTestId('drug-filter').selectOption('common')
+  await expect(page.getByTestId('drug-card-1')).toBeVisible()
+  await page.getByTestId('drug-filter').selectOption('all')
+  await page.getByTestId('drug-card-1').getByText('取消常用').click()
+  await expect(page.getByTestId('drug-card-1')).not.toContainText('常用药')
+})
+
 test('药品分类和供应商提供历史输入建议', async ({ page }) => {
   await openApp(page, '/#/pharmacy/new', '[data-testid="drug-edit-page"]')
   const categories = await page.locator('#category-options option').evaluateAll((nodes) =>

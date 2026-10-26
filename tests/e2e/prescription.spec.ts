@@ -119,6 +119,16 @@ test('编辑处方数量按差额扣库存', async ({ page, request }) => {
   expect(drug.stockQty).toBe(7)
 })
 
+test('常用药可在开方时快速加入', async ({ page, request }) => {
+  await apiCall(request, 'drugs', 'setCommon', [{ id: 1, isCommon: true }])
+  await openApp(page, '/#/prescriptions/new', '[data-testid="prescription-edit-page"]')
+  await page.getByTestId('add-medication').click()
+  await expect(page.getByTestId('common-drugs')).toBeVisible()
+  await page.getByTestId('common-drug-1').click()
+  await expect(page.getByTestId('medication-table')).toBeVisible()
+  await expect(page.getByTestId('med-unit-label-1')).toHaveText('盒')
+})
+
 test('新建处方并从药房添加用药', async ({ page, request }) => {
   await openApp(page)
   await page.getByTestId('add-prescription').click()
