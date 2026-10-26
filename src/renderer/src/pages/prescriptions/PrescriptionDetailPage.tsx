@@ -57,6 +57,14 @@ export function PrescriptionDetailPage(): React.JSX.Element {
     )
   }
 
+  const groups = new Map<string, typeof prescription.items>()
+  prescription.items.forEach((item, index) => {
+    const key = item.groupKey || `standalone-${item.id || index}`
+    const group = groups.get(key) ?? []
+    group.push(item)
+    groups.set(key, group)
+  })
+
   return (
     <div data-testid="prescription-detail-page">
       <Breadcrumbs
@@ -161,18 +169,39 @@ export function PrescriptionDetailPage(): React.JSX.Element {
                     </tr>
                   </thead>
                   <tbody>
-                    {prescription.items.map((item) => (
-                      <tr key={item.id} data-testid={`detail-medication-${item.drugId}`}>
-                        <td>
-                          <div className="med-drug-name">{item.drugName}</div>
-                          <div className="med-drug-stock">单位：{item.unit}</div>
-                        </td>
-                        <td className="num">
-                          {item.qty} {item.unit}
-                        </td>
-                        <td>{mergeUsage(item.usage, item.frequency) || '—'}</td>
-                      </tr>
-                    ))}
+                    {[...groups.entries()].flatMap(([groupKey, group]) => {
+                      const combo = Boolean(group[0].groupName)
+                      const rows: React.JSX.Element[] = []
+                      if (combo) {
+                        rows.push(
+                          <tr key={`group-${groupKey}`} className="detail-combo-row">
+                            <td colSpan={3}>
+                              <strong>{group[0].groupName}</strong>
+                              <span className="detail-combo-usage">
+                                用法：{group[0].groupUsage || '—'}
+                              </span>
+                            </td>
+                          </tr>
+                        )
+                      }
+                      group.forEach((item) => {
+                        rows.push(
+                          <tr key={item.id} data-testid={`detail-medication-${item.drugId}`}>
+                            <td>
+                              <div className="med-drug-name">{item.drugName}</div>
+                              <div className="med-drug-stock">单位：{item.unit}</div>
+                            </td>
+                            <td className="num">
+                              {item.qty} {item.unit}
+                            </td>
+                            <td>
+                              {combo ? '' : mergeUsage(item.usage, item.frequency) || '—'}
+                            </td>
+                          </tr>
+                        )
+                      })
+                      return rows
+                    })}
                   </tbody>
                 </table>
               </div>

@@ -62,6 +62,11 @@ test('处方可添加药房组合并临时组合，分别填写用法', async ({
     '外用，每天1次'
   )
 
+  await openApp(page, `/#/prescriptions/${created!.id}`, '[data-testid="prescription-detail-page"]')
+  await expect(page.getByText('感冒组合').first()).toBeVisible()
+  await expect(page.getByText('用法：口服，每天3次').first()).toBeVisible()
+  await expect(page.getByText('用法：外用，每天1次').first()).toBeVisible()
+
   await openApp(page, `/#/prescriptions/print?ids=${created!.id}`, '[data-testid="print-page"]')
   const frame = page.frameLocator('.print-frame')
   await expect(frame.getByText('1、阿莫西林胶囊').first()).toBeVisible()
