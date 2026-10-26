@@ -1,6 +1,7 @@
 import type { PrescriptionDetail } from './types/models'
 import {
   PRINT_CONTENT_LAYOUT,
+  PRINT_CONTENT_QUANTITY_X,
   buildPrescriptionFooterFields,
   buildPrescriptionHeaderFields,
   buildPrescriptionSignatureField,
@@ -81,17 +82,28 @@ export function buildPrescriptionHtml(
           .join('')
 
         const lineHtml = lines
-          .map(
-            (line, index) =>
-              `<span class="content-line" style="left:${(PRINT_CONTENT_LAYOUT.x * 100).toFixed(
-                3
-              )}%;top:${(
-                (PRINT_CONTENT_LAYOUT.y + index * PRINT_CONTENT_LAYOUT.lineHeight) *
-                100
-              ).toFixed(3)}%;width:${(PRINT_CONTENT_LAYOUT.width * 100).toFixed(
-                3
-              )}%;font-size:${PRINT_CONTENT_LAYOUT.fontSize}pt;">${escapeHtml(line)}</span>`
-          )
+          .map((line, index) => {
+            const top = (
+              (PRINT_CONTENT_LAYOUT.y + index * PRINT_CONTENT_LAYOUT.lineHeight) *
+              100
+            ).toFixed(3)
+            const [left, quantity] = line.split('	')
+            const leftHtml = `<span class="content-line" style="left:${(
+              PRINT_CONTENT_LAYOUT.x * 100
+            ).toFixed(3)}%;top:${top}%;width:${(
+              PRINT_CONTENT_LAYOUT.width * 100
+            ).toFixed(3)}%;font-size:${PRINT_CONTENT_LAYOUT.fontSize}pt;">${escapeHtml(
+              left ?? ''
+            )}</span>`
+            if (quantity === undefined) return leftHtml
+            return `${leftHtml}<span class="content-line" style="left:${(
+              PRINT_CONTENT_QUANTITY_X * 100
+            ).toFixed(3)}%;top:${top}%;width:${((
+              1 - PRINT_CONTENT_QUANTITY_X - 0.04
+            ) * 100).toFixed(3)}%;font-size:${PRINT_CONTENT_LAYOUT.fontSize}pt;">${escapeHtml(
+              quantity
+            )}</span>`
+          })
           .join('')
 
         return `<section class="sheet">

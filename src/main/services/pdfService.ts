@@ -6,6 +6,7 @@ import type { PrescriptionDetail } from '../../shared/types/models'
 import { AppError } from '../../shared/result'
 import {
   PRINT_CONTENT_LAYOUT,
+  PRINT_CONTENT_QUANTITY_X,
   PRINT_PAGE_HEIGHT_MM,
   PRINT_PAGE_WIDTH_MM,
   buildPrescriptionFooterFields,
@@ -88,13 +89,24 @@ class PrintRenderer {
     const { x, y, lineHeight, fontSize } = PRINT_CONTENT_LAYOUT
     lines.forEach((line, index) => {
       if (!line) return
-      this.page.drawText(line, {
+      const [left, quantity] = line.split('	')
+      const drawY = PAGE_HEIGHT * (1 - (y + index * lineHeight)) - fontSize
+      this.page.drawText(left ?? '', {
         x: x * PAGE_WIDTH,
-        y: PAGE_HEIGHT * (1 - (y + index * lineHeight)) - fontSize,
+        y: drawY,
         size: fontSize,
         font: this.font,
         color: rgb(0.08, 0.08, 0.08)
       })
+      if (quantity !== undefined) {
+        this.page.drawText(quantity, {
+          x: PRINT_CONTENT_QUANTITY_X * PAGE_WIDTH,
+          y: drawY,
+          size: fontSize,
+          font: this.font,
+          color: rgb(0.08, 0.08, 0.08)
+        })
+      }
     })
   }
 

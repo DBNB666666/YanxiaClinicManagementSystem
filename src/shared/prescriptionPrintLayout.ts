@@ -15,6 +15,7 @@ export const PRINT_CONTENT_LAYOUT = {
   lineHeight: 0.0245,
   fontSize: 9
 }
+export const PRINT_CONTENT_QUANTITY_X = PRINT_CONTENT_LAYOUT.x + 0.38
 
 export interface PrintField {
   key: string
@@ -112,9 +113,9 @@ export function buildPrescriptionContentLines(prescription: PrescriptionDetail):
     if (group.length === 0) continue
     groupNumber += 1
     const first = group[0]
-    lines.push(...wrapByChars(`${groupNumber}、${first.drugName}  ${first.qty}${first.unit}`))
+    lines.push(...wrapByChars(`${groupNumber}、${first.drugName}	${first.qty}${first.unit}`))
     for (const item of group.slice(1)) {
-      lines.push(...wrapByChars(`   ${item.drugName}  ${item.qty}${item.unit}`))
+      lines.push(...wrapByChars(`   ${item.drugName}	${item.qty}${item.unit}`))
     }
     const usage = first.groupUsage || mergeUsage(first.usage, first.frequency)
     lines.push(...wrapByChars(`    用法：${usage || '—'}`))

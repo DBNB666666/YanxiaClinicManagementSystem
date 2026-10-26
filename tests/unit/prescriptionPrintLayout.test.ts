@@ -55,7 +55,7 @@ describe('prescription print layout', () => {
         }
       ]
     } as PrescriptionDetail)
-    expect(lines).toEqual(['1、阿莫西林胶囊  2盒', '    用法：口服，每日1次'])
+    expect(lines).toEqual(['1、阿莫西林胶囊	2盒', '    用法：口服，每日1次'])
     expect(lines.join('')).not.toContain('1.')
   })
 
@@ -98,8 +98,8 @@ describe('prescription print layout', () => {
       ]
     } as PrescriptionDetail)
     expect(lines).toEqual([
-      '1、阿莫西林胶囊  2盒',
-      '   布洛芬缓释胶囊  1盒',
+      '1、阿莫西林胶囊	2盒',
+      '   布洛芬缓释胶囊	1盒',
       '    用法：口服，每天3次'
     ])
   })
