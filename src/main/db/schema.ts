@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 4
+export const SCHEMA_VERSION = 5
 
 export const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS drugs (
@@ -26,6 +26,22 @@ CREATE TABLE IF NOT EXISTS drug_units (
   factor REAL NOT NULL CHECK (factor > 0),
   price_cents INTEGER NOT NULL CHECK (price_cents >= 0),
   cost_cents INTEGER NOT NULL CHECK (cost_cents >= 0),
+  sort_order INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS medication_combos (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS medication_combo_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  combo_id INTEGER NOT NULL REFERENCES medication_combos(id) ON DELETE CASCADE,
+  drug_id INTEGER NOT NULL REFERENCES drugs(id) ON DELETE RESTRICT,
+  qty INTEGER NOT NULL CHECK (qty > 0),
+  unit TEXT NOT NULL DEFAULT '',
   sort_order INTEGER NOT NULL DEFAULT 0
 );
 
@@ -66,6 +82,9 @@ CREATE TABLE IF NOT EXISTS prescription_items (
   qty INTEGER NOT NULL CHECK (qty > 0),
   usage TEXT NOT NULL DEFAULT '',
   frequency TEXT NOT NULL DEFAULT '',
+  group_key TEXT NOT NULL DEFAULT '',
+  group_name TEXT NOT NULL DEFAULT '',
+  group_usage TEXT NOT NULL DEFAULT '',
   unit_price_cents INTEGER NOT NULL,
   unit_cost_cents INTEGER NOT NULL,
   amount_cents INTEGER NOT NULL,
@@ -96,6 +115,7 @@ CREATE INDEX IF NOT EXISTS idx_prescriptions_patient ON prescriptions(patient_na
 CREATE INDEX IF NOT EXISTS idx_items_prescription ON prescription_items(prescription_id);
 CREATE INDEX IF NOT EXISTS idx_items_drug ON prescription_items(drug_id);
 CREATE INDEX IF NOT EXISTS idx_drug_units_drug ON drug_units(drug_id, sort_order);
+CREATE INDEX IF NOT EXISTS idx_combo_items_combo ON medication_combo_items(combo_id, sort_order);
 CREATE INDEX IF NOT EXISTS idx_purchases_drug_date ON purchases(drug_id, purchase_date);
 CREATE INDEX IF NOT EXISTS idx_notifications_drug_read ON notifications(drug_id, read_at);
 CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at);

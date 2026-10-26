@@ -6,6 +6,7 @@ const API_SCRIPT = `
     app: ['getInfo'],
     settings: ['get', 'set'],
     drugs: ['list', 'get', 'create', 'update', 'setStatus', 'remove', 'purchase', 'lowStockCount'],
+    combos: ['list', 'get', 'create', 'update', 'remove'],
     prescriptions: ['list', 'get', 'create', 'update', 'remove'],
     finance: ['summary', 'details'],
     notifications: ['list', 'unreadCount', 'markRead', 'markAllRead'],

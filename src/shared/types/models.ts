@@ -85,6 +85,9 @@ export interface PrescriptionItem {
   qty: number
   usage: string
   frequency: string
+  groupKey: string
+  groupName: string
+  groupUsage: string
   unitPriceCents: number
   unitCostCents: number
   amountCents: number
@@ -123,6 +126,37 @@ export interface PrescriptionItemInput {
   qty: number
   usage: string
   frequency: string
+  groupKey?: string
+  groupName?: string
+  groupUsage?: string
+}
+
+export interface MedicationComboItem {
+  id: number
+  comboId: number
+  drugId: number
+  drugName: string
+  unit: string
+  qty: number
+}
+
+export interface MedicationCombo {
+  id: number
+  name: string
+  items: MedicationComboItem[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface MedicationComboItemInput {
+  drugId: number
+  unit?: string
+  qty: number
+}
+
+export interface MedicationComboInput {
+  name: string
+  items: MedicationComboItemInput[]
 }
 
 export interface PrescriptionInput {

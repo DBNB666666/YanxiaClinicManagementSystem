@@ -116,7 +116,7 @@ async function exportPdf(ids: number[]): Promise<{ path: string; pageCount: numb
 
 async function dispatch(ns: string, method: string, args: unknown[]): Promise<unknown> {
   if (ns === 'app' && method === 'getInfo') {
-    return { version: '0.4.2', dataDir: dataRoot, lastBackupAt: null }
+    return { version: '0.5.0', dataDir: dataRoot, lastBackupAt: null }
   }
   if (ns === 'settings' && method === 'get') return service.getSettings()
   if (ns === 'settings' && method === 'set') return service.setSettings(args[0] as never)
@@ -135,6 +135,17 @@ async function dispatch(ns: string, method: string, args: unknown[]): Promise<un
     if (method === 'remove') return service.deleteDrug(Number(args[0]))
     if (method === 'purchase') return service.purchaseDrug(args[0] as never)
     if (method === 'lowStockCount') return service.lowStockCount()
+  }
+  if (ns === 'combos') {
+    if (method === 'list') return service.listCombos()
+    if (method === 'get') return service.getCombo(Number(args[0]))
+    if (method === 'create') return service.createCombo(args[0] as never)
+    if (method === 'update') {
+      const first = args[0] as { id?: number; input?: unknown }
+      const wrapped = Boolean(first && typeof first === 'object' && 'input' in first)
+      return service.updateCombo(wrapped ? Number(first.id) : Number(args[0]), (wrapped ? first.input : args[1]) as never)
+    }
+    if (method === 'remove') return service.deleteCombo(Number(args[0]))
   }
   if (ns === 'prescriptions') {
     if (method === 'list') return service.listPrescriptions(args[0] as never)

@@ -30,6 +30,13 @@ const api: ClinicApi = {
     purchase: (input) => invoke(IPC.drugsPurchase, input),
     lowStockCount: () => invoke(IPC.drugsLowStockCount)
   },
+  combos: {
+    list: () => invoke(IPC.combosList),
+    get: (id) => invoke(IPC.combosGet, id),
+    create: (input) => invoke(IPC.combosCreate, input),
+    update: (id, input) => invoke(IPC.combosUpdate, { id, input }),
+    remove: (id) => invoke(IPC.combosRemove, id)
+  },
   prescriptions: {
     list: (query) => invoke(IPC.prescriptionsList, query),
     get: (id) => invoke(IPC.prescriptionsGet, id),

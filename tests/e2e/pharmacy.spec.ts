@@ -42,6 +42,25 @@ test('切换板块后编辑药品返回详情而不是药房', async ({ page }) 
   await page.waitForSelector('[data-testid="drug-detail-page"]')
 })
 
+test('药房新增和编辑用药组合', async ({ page, request }) => {
+  await openApp(page, '/#/pharmacy', '[data-testid="pharmacy-page"]')
+  await page.getByTestId('manage-combos').click()
+  await page.getByTestId('new-combo').click()
+  await page.getByTestId('combo-name').fill('感冒组合')
+  await page.getByTestId('combo-drug-0').selectOption('1')
+  await page.getByTestId('combo-qty-0').fill('2')
+  await page.getByTestId('save-combo').click()
+  await expect(page.getByTestId('combo-1')).toContainText('感冒组合')
+  const combos = await apiCall<{ items: { name: string; items: { drugName: string; qty: number }[] }[] }>(
+    request,
+    'combos',
+    'list'
+  )
+  expect(combos[0].name).toBe('感冒组合')
+  expect(combos[0].items[0].drugName).toBe('阿莫西林胶囊')
+  expect(combos[0].items[0].qty).toBe(2)
+})
+
 test('面包屑显示药品层级并可跳转', async ({ page }) => {
   await openApp(page, '/#/pharmacy/1/edit', '[data-testid="drug-edit-page"]')
   const breadcrumbs = page.getByTestId('breadcrumbs')

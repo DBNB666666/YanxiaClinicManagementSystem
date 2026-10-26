@@ -17,8 +17,8 @@ export function migrate(db: SqlDatabase): number {
   try {
     if (version < 1) {
       db.exec(SCHEMA_SQL)
-      db.run('PRAGMA user_version = 4')
-      version = 4
+      db.run('PRAGMA user_version = 5')
+      version = 5
     } else {
       if (version < 2) {
         db.exec(`
@@ -60,7 +60,31 @@ export function migrate(db: SqlDatabase): number {
         db.run('PRAGMA user_version = 4')
         version = 4
       }
-      db.run('PRAGMA user_version = 4')
+      if (version < 5) {
+        db.exec(`
+          CREATE TABLE IF NOT EXISTS medication_combos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+          );
+          CREATE TABLE IF NOT EXISTS medication_combo_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            combo_id INTEGER NOT NULL REFERENCES medication_combos(id) ON DELETE CASCADE,
+            drug_id INTEGER NOT NULL REFERENCES drugs(id) ON DELETE RESTRICT,
+            qty INTEGER NOT NULL CHECK (qty > 0),
+            unit TEXT NOT NULL DEFAULT '',
+            sort_order INTEGER NOT NULL DEFAULT 0
+          );
+          CREATE INDEX IF NOT EXISTS idx_combo_items_combo ON medication_combo_items(combo_id, sort_order);
+        `)
+        db.run("ALTER TABLE prescription_items ADD COLUMN group_key TEXT NOT NULL DEFAULT ''")
+        db.run("ALTER TABLE prescription_items ADD COLUMN group_name TEXT NOT NULL DEFAULT ''")
+        db.run("ALTER TABLE prescription_items ADD COLUMN group_usage TEXT NOT NULL DEFAULT ''")
+        db.run('PRAGMA user_version = 5')
+        version = 5
+      }
+      db.run('PRAGMA user_version = 5')
     }
     db.run('COMMIT')
     return version

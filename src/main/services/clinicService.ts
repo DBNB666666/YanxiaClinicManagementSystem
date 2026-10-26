@@ -13,6 +13,8 @@ import type {
   FinanceSummary,
   Gender,
   ListResult,
+  MedicationCombo,
+  MedicationComboInput,
   Notification,
   PrescriptionDetail,
   PrescriptionInput,
@@ -34,6 +36,7 @@ import {
   financeDetailsQuerySchema,
   financeQuerySchema,
   idSchema,
+  medicationComboInputSchema,
   prescriptionInputSchema,
   prescriptionListQuerySchema,
   purchaseInputSchema,
@@ -80,6 +83,23 @@ interface PurchaseRow {
   created_at: string
 }
 
+interface ComboRow {
+  id: number
+  name: string
+  created_at: string
+  updated_at: string
+}
+
+interface ComboItemRow {
+  id: number
+  combo_id: number
+  drug_id: number
+  qty: number
+  unit: string
+  drug_name: string
+  sort_order: number
+}
+
 interface PrescriptionRow {
   id: number
   patient_name: string
@@ -109,6 +129,9 @@ interface PrescriptionItemRow {
   qty: number
   usage: string
   frequency: string
+  group_key: string
+  group_name: string
+  group_usage: string
   unit_price_cents: number
   unit_cost_cents: number
   amount_cents: number
@@ -196,6 +219,9 @@ function mapItem(row: PrescriptionItemRow): PrescriptionItem {
     qty: Number(row.qty),
     usage: row.usage,
     frequency: row.frequency,
+    groupKey: row.group_key ?? '',
+    groupName: row.group_name ?? '',
+    groupUsage: row.group_usage ?? '',
     unitPriceCents: Number(row.unit_price_cents),
     unitCostCents: Number(row.unit_cost_cents),
     amountCents: Number(row.amount_cents)
@@ -511,6 +537,105 @@ export class ClinicService {
     return { count: Number(row?.count ?? 0) }
   }
 
+  // ---------- 用药组合 ----------
+
+  listCombos(): MedicationCombo[] {
+    const rows = this.store.queryAll<ComboRow>(
+      'SELECT * FROM medication_combos ORDER BY updated_at DESC, id DESC'
+    )
+    return rows.map((row) => this.mapCombo(row))
+  }
+
+  getCombo(id: number): MedicationCombo {
+    const safeId = idSchema.parse(id)
+    const row = this.store.queryOne<ComboRow>('SELECT * FROM medication_combos WHERE id = ?', [
+      safeId
+    ])
+    if (!row) throw new AppError('NOT_FOUND', '用药组合不存在')
+    return this.mapCombo(row)
+  }
+
+  createCombo(input: MedicationComboInput): { id: number } {
+    const parsed = medicationComboInputSchema.parse(input)
+    const now = nowIso()
+    const id = this.store.transaction(() => {
+      const comboId = this.store.insert(
+        'INSERT INTO medication_combos (name, created_at, updated_at) VALUES (?, ?, ?)',
+        [parsed.name, now, now]
+      )
+      parsed.items.forEach((item, index) => {
+        const drug = this.store.queryOne<DrugRow>('SELECT * FROM drugs WHERE id = ?', [item.drugId])
+        if (!drug) throw new AppError('NOT_FOUND', `药品不存在：${item.drugId}`)
+        this.store.insert(
+          `INSERT INTO medication_combo_items (combo_id, drug_id, qty, unit, sort_order)
+           VALUES (?, ?, ?, ?, ?)`,
+          [comboId, item.drugId, item.qty, item.unit ?? drug.unit, index]
+        )
+      })
+      return comboId
+    })
+    this.onDataChanged?.()
+    return { id }
+  }
+
+  updateCombo(id: number, input: MedicationComboInput): { id: number } {
+    const safeId = idSchema.parse(id)
+    const parsed = medicationComboInputSchema.parse(input)
+    const existing = this.store.queryOne<ComboRow>('SELECT * FROM medication_combos WHERE id = ?', [
+      safeId
+    ])
+    if (!existing) throw new AppError('NOT_FOUND', '用药组合不存在')
+    this.store.transaction(() => {
+      this.store.run('UPDATE medication_combos SET name = ?, updated_at = ? WHERE id = ?', [
+        parsed.name,
+        nowIso(),
+        safeId
+      ])
+      this.store.run('DELETE FROM medication_combo_items WHERE combo_id = ?', [safeId])
+      parsed.items.forEach((item, index) => {
+        const drug = this.store.queryOne<DrugRow>('SELECT * FROM drugs WHERE id = ?', [item.drugId])
+        if (!drug) throw new AppError('NOT_FOUND', `药品不存在：${item.drugId}`)
+        this.store.insert(
+          `INSERT INTO medication_combo_items (combo_id, drug_id, qty, unit, sort_order)
+           VALUES (?, ?, ?, ?, ?)`,
+          [safeId, item.drugId, item.qty, item.unit ?? drug.unit, index]
+        )
+      })
+    })
+    this.onDataChanged?.()
+    return { id: safeId }
+  }
+
+  deleteCombo(id: number): { id: number } {
+    const safeId = idSchema.parse(id)
+    this.store.run('DELETE FROM medication_combos WHERE id = ?', [safeId])
+    this.onDataChanged?.()
+    return { id: safeId }
+  }
+
+  private mapCombo(row: ComboRow): MedicationCombo {
+    const items = this.store.queryAll<ComboItemRow>(
+      `SELECT i.*, d.name AS drug_name
+       FROM medication_combo_items i JOIN drugs d ON d.id = i.drug_id
+       WHERE i.combo_id = ? ORDER BY i.sort_order, i.id`,
+      [Number(row.id)]
+    )
+    return {
+      id: Number(row.id),
+      name: row.name,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      items: items.map((item) => ({
+        id: Number(item.id),
+        comboId: Number(item.combo_id),
+        drugId: Number(item.drug_id),
+        drugName: item.drug_name,
+        unit: item.unit,
+        qty: Number(item.qty)
+      }))
+    }
+  }
+
   // ---------- 处方 ----------
 
   listPrescriptions(rawQuery: PrescriptionListQuery): ListResult<PrescriptionSummary> {
@@ -644,8 +769,9 @@ export class ClinicService {
         this.store.insert(
           `INSERT INTO prescription_items
             (prescription_id, drug_id, drug_name, unit, unit_factor, qty, usage, frequency,
+             group_key, group_name, group_usage,
              unit_price_cents, unit_cost_cents, amount_cents, sort_order)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             prescriptionId,
             row.item.drugId,
@@ -655,6 +781,9 @@ export class ClinicService {
             row.item.qty,
             row.item.usage,
             row.item.frequency,
+            row.item.groupKey ?? '',
+            row.item.groupName ?? '',
+            row.item.groupUsage ?? '',
             row.unitPriceCents,
             row.unitCostCents,
             row.amountCents,
@@ -816,12 +945,16 @@ export class ClinicService {
         if (row.old) {
           this.store.run(
             `UPDATE prescription_items
-             SET qty = ?, usage = ?, frequency = ?, amount_cents = ?, sort_order = ?
+             SET qty = ?, usage = ?, frequency = ?, group_key = ?, group_name = ?,
+                 group_usage = ?, amount_cents = ?, sort_order = ?
              WHERE id = ?`,
             [
               row.item.qty,
               row.item.usage,
               row.item.frequency,
+              row.item.groupKey ?? row.old.group_key ?? '',
+              row.item.groupName ?? row.old.group_name ?? '',
+              row.item.groupUsage ?? row.old.group_usage ?? '',
               row.amountCents,
               row.index,
               Number(row.old.id)
@@ -831,8 +964,9 @@ export class ClinicService {
           this.store.insert(
             `INSERT INTO prescription_items
               (prescription_id, drug_id, drug_name, unit, unit_factor, qty, usage, frequency,
+               group_key, group_name, group_usage,
                unit_price_cents, unit_cost_cents, amount_cents, sort_order)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               safeId,
               row.item.drugId,
@@ -842,6 +976,9 @@ export class ClinicService {
               row.item.qty,
               row.item.usage,
               row.item.frequency,
+              row.item.groupKey ?? '',
+              row.item.groupName ?? '',
+              row.item.groupUsage ?? '',
               row.unitPriceCents,
               row.unitCostCents,
               row.amountCents,

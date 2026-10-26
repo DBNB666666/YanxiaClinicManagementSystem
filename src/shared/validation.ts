@@ -50,7 +50,23 @@ export const prescriptionItemInputSchema = z.object({
   unit: z.string().trim().max(8).optional(),
   qty: z.number().int('数量必须是整数').min(1, '数量必须大于 0'),
   usage: z.string().trim().max(50, '服用方式最多 50 字').default(''),
-  frequency: z.string().trim().max(50, '服用频率最多 50 字').default('')
+  frequency: z.string().trim().max(50, '服用频率最多 50 字').default(''),
+  groupKey: z.string().max(100).optional(),
+  groupName: z.string().trim().max(40).optional(),
+  groupUsage: z.string().trim().max(100).optional()
+})
+
+export const medicationComboInputSchema = z.object({
+  name: z.string().trim().min(1, '请填写组合名称').max(40, '组合名称最多 40 字'),
+  items: z
+    .array(
+      z.object({
+        drugId: z.number().int().positive(),
+        unit: z.string().trim().max(8).optional(),
+        qty: z.number().int('数量必须是整数').min(1, '数量必须大于 0')
+      })
+    )
+    .min(1, '组合至少包含一种药品')
 })
 
 export const prescriptionInputSchema = z.object({

@@ -1,4 +1,6 @@
 import type {
+  MedicationCombo,
+  MedicationComboInput,
   AppInfo,
   Drug,
   DrugDetail,
@@ -40,6 +42,13 @@ export interface ClinicApi {
       costCents: number
     }>
     lowStockCount(): Promise<{ count: number }>
+  }
+  combos: {
+    list(): Promise<MedicationCombo[]>
+    get(id: number): Promise<MedicationCombo>
+    create(input: MedicationComboInput): Promise<{ id: number }>
+    update(id: number, input: MedicationComboInput): Promise<{ id: number }>
+    remove(id: number): Promise<{ id: number }>
   }
   prescriptions: {
     list(query: PrescriptionListQuery): Promise<ListResult<PrescriptionSummary>>

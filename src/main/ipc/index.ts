@@ -52,6 +52,12 @@ export function registerIpc({ service, dataDir, getAppInfo }: RegisterOptions): 
   ipcMain.handle(IPC.drugsPurchase, wrapWithArg((input) => service.purchaseDrug(input)))
   ipcMain.handle(IPC.drugsLowStockCount, wrap(() => service.lowStockCount()))
 
+  ipcMain.handle(IPC.combosList, wrap(() => service.listCombos()))
+  ipcMain.handle(IPC.combosGet, wrapWithArg((id: number) => service.getCombo(id)))
+  ipcMain.handle(IPC.combosCreate, wrapWithArg((input) => service.createCombo(input)))
+  ipcMain.handle(IPC.combosUpdate, wrapWithArg(({ id, input }) => service.updateCombo(id, input)))
+  ipcMain.handle(IPC.combosRemove, wrapWithArg((id: number) => service.deleteCombo(id)))
+
   ipcMain.handle(IPC.prescriptionsList, wrapWithArg((query) => service.listPrescriptions(query)))
   ipcMain.handle(IPC.prescriptionsGet, wrapWithArg((id: number) => service.getPrescription(id)))
   ipcMain.handle(

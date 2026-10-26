@@ -19,6 +19,7 @@ import { useAsync } from '../../hooks/useAsync'
 import { useSettings } from '../../context/SettingsProvider'
 import { useToast } from '../../context/ToastProvider'
 import { formatDrugStock } from '@shared/drugUnits'
+import { ComboManagerDialog } from './ComboManagerDialog'
 
 export function PharmacyListPage(): React.JSX.Element {
   const navigate = useNavigate()
@@ -30,6 +31,7 @@ export function PharmacyListPage(): React.JSX.Element {
   const [deleting, setDeleting] = useState<Drug | null>(null)
   const [stopTarget, setStopTarget] = useState<Drug | null>(null)
   const [busy, setBusy] = useState(false)
+  const [comboOpen, setComboOpen] = useState(false)
   const pageSize = 20
   const viewMode = settings.viewModes.pharmacy
 
@@ -98,14 +100,23 @@ export function PharmacyListPage(): React.JSX.Element {
         title="药品"
         subtitle={`共 ${total} 种`}
         actions={
-          <Button
-            variant="primary"
-            icon={<Plus size={16} />}
-            onClick={() => navigate('/pharmacy/new')}
-            data-testid="add-drug"
-          >
-            添加药品
-          </Button>
+          <div className="flex gap-8">
+            <Button
+              variant="secondary"
+              onClick={() => setComboOpen(true)}
+              data-testid="manage-combos"
+            >
+              用药组合
+            </Button>
+            <Button
+              variant="primary"
+              icon={<Plus size={16} />}
+              onClick={() => navigate('/pharmacy/new')}
+              data-testid="add-drug"
+            >
+              添加药品
+            </Button>
+          </div>
         }
       />
 
@@ -320,6 +331,7 @@ export function PharmacyListPage(): React.JSX.Element {
         onConfirm={() => void stop()}
         testId="stop-drug-dialog"
       />
+      <ComboManagerDialog open={comboOpen} onClose={() => setComboOpen(false)} />
     </div>
   )
 }
