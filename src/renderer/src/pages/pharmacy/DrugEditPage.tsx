@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import type { DrugInput, DrugUnitInput } from '@shared/types/models'
-import { centsToInput, formatCents, toCents } from '@shared/money'
+import { centsToInput, toCents } from '@shared/money'
 import { todayIso } from '@shared/date'
 import {
   Button,
@@ -126,8 +126,6 @@ export function DrugEditPage(): React.JSX.Element {
 
   const costCents = safeCents(form.cost)
   const priceCents = safeCents(form.price)
-  const marginCents = priceCents - costCents
-  const marginPercent = priceCents > 0 ? Math.round((marginCents / priceCents) * 100) : 0
   const displayUnits = subunits.map((row) => ({
     id: 0,
     unit: row.unit || '单位',
@@ -380,7 +378,7 @@ export function DrugEditPage(): React.JSX.Element {
           <section className="form-section" style={{ marginTop: 16 }}>
             <h2 className="form-section-title">细分单位（选填）</h2>
             <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>
-              例如：1 盒 = 7 支，1 支 = 20 mg。每一级单独设置售价和成本；库存按最细单位扣减。
+              例如：1 盒 = 7 支，1 支 = 20 mg。库存按最细单位扣减。
             </p>
             {subunits.length > 0 ? (
               <div className="table-wrap" style={{ marginTop: 12 }}>
@@ -389,8 +387,6 @@ export function DrugEditPage(): React.JSX.Element {
                     <tr>
                       <th>细分单位</th>
                       <th>每 1 上级单位包含</th>
-                      <th>售价（元）</th>
-                      <th>成本（元）</th>
                       <th />
                     </tr>
                   </thead>
@@ -432,34 +428,6 @@ export function DrugEditPage(): React.JSX.Element {
                           </div>
                         </td>
                         <td>
-                          <TextInput
-                            value={row.price}
-                            inputMode="decimal"
-                            data-testid={`drug-subunit-price-${index}`}
-                            onChange={(event) =>
-                              setSubunits((current) =>
-                                current.map((entry, i) =>
-                                  i === index ? { ...entry, price: event.target.value } : entry
-                                )
-                              )
-                            }
-                          />
-                        </td>
-                        <td>
-                          <TextInput
-                            value={row.cost}
-                            inputMode="decimal"
-                            data-testid={`drug-subunit-cost-${index}`}
-                            onChange={(event) =>
-                              setSubunits((current) =>
-                                current.map((entry, i) =>
-                                  i === index ? { ...entry, cost: event.target.value } : entry
-                                )
-                              )
-                            }
-                          />
-                        </td>
-                        <td>
                           <Button
                             size="xs"
                             variant="text-danger"
@@ -491,44 +459,8 @@ export function DrugEditPage(): React.JSX.Element {
           </section>
 
           <section className="form-section" style={{ marginTop: 16 }}>
-            <h2 className="form-section-title">价格</h2>
+            <h2 className="form-section-title">其他信息</h2>
             <div className="form-grid" style={{ marginTop: 16 }}>
-              <div className="span-4">
-                <Field label="成本" required>
-                  <div className="input-group">
-                    <span className="unit">¥</span>
-                    <TextInput
-                      value={form.cost}
-                      inputMode="decimal"
-                      data-testid="drug-cost"
-                      onChange={(event) => setField('cost', event.target.value)}
-                    />
-                  </div>
-                </Field>
-              </div>
-              <div className="span-4">
-                <Field label="标价" required>
-                  <div className="input-group">
-                    <span className="unit">¥</span>
-                    <TextInput
-                      value={form.price}
-                      inputMode="decimal"
-                      data-testid="drug-price"
-                      onChange={(event) => setField('price', event.target.value)}
-                    />
-                  </div>
-                </Field>
-              </div>
-              <div className="span-4">
-                <Field label="毛利">
-                  <div
-                    className={`money ${marginCents < 0 ? 'negative' : ''}`.trim()}
-                    style={{ height: 36, display: 'flex', alignItems: 'center' }}
-                  >
-                    {formatCents(marginCents)}（{marginPercent}%）
-                  </div>
-                </Field>
-              </div>
               <div className="span-12">
                 <Field label="适应症">
                   <TextArea

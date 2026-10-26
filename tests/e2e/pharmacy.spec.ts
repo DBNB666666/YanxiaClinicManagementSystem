@@ -63,8 +63,6 @@ test('新增药品、进货与停用', async ({ page, request }) => {
   await page.getByTestId('stock-base').fill('6')
   await page.getByTestId('stock-adjust-save').click()
   await page.getByTestId('drug-warning').fill('5')
-  await page.getByTestId('drug-cost').fill('3.00')
-  await page.getByTestId('drug-price').fill('6.00')
   await page.getByTestId('save-drug').click()
 
   await page.waitForSelector('[data-testid="drug-detail-page"]')
@@ -73,7 +71,6 @@ test('新增药品、进货与停用', async ({ page, request }) => {
   await page.getByTestId('purchase-button').click()
   await page.waitForSelector('[data-testid="purchase-dialog"]')
   await page.getByTestId('purchase-qty').fill('2')
-  await page.getByTestId('purchase-cost').fill('3.50')
   await page.getByTestId('confirm-purchase').click()
   await waitForToast(page, '已进货')
 
@@ -83,7 +80,7 @@ test('新增药品、进货与停用', async ({ page, request }) => {
     5
   ])
   expect(drug.stockQty).toBe(8)
-  expect(drug.costCents).toBe(350)
+  expect(drug.costCents).toBe(0)
 
   await page.getByTestId('toggle-drug-status').click()
   await waitForToast(page, '已停用')

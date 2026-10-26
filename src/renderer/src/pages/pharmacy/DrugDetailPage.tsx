@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, PackagePlus, Pencil, Power } from 'lucide-react'
 import type { DrugDetail } from '@shared/types/models'
-import { formatCents } from '@shared/money'
 import { formatDateTime } from '@shared/date'
 import { Banner, Button, EmptyState, PageHeader, Tag } from '../../components/Ui'
 import { useToast } from '../../context/ToastProvider'
@@ -152,14 +151,6 @@ export function DrugDetailPage(): React.JSX.Element {
                 <span className="info-value">{drug.supplier || '—'}</span>
               </div>
               <div className="info-item">
-                <span className="info-label">成本</span>
-                <span className="info-value">{formatCents(drug.costCents)} / {drug.unit}</span>
-              </div>
-              <div className="info-item">
-                <span className="info-label">标价</span>
-                <span className="info-value">{formatCents(drug.priceCents)} / {drug.unit}</span>
-              </div>
-              <div className="info-item">
                 <span className="info-label">开药次数</span>
                 <span className="info-value">{drug.usageCount} 次</span>
               </div>
@@ -182,20 +173,16 @@ export function DrugDetailPage(): React.JSX.Element {
               <EmptyState title="还没有进货记录" description="点右上角“进货”记录第一笔。" />
             ) : (
               <div className="purchase-list">
-                <div className="purchase-row purchase-head">
+                <div className="purchase-row purchase-head" style={{ gridTemplateColumns: '1fr 1fr' }}>
                   <span>日期</span>
                   <span>数量</span>
-                  <span>单位成本</span>
-                  <span>本次金额</span>
                 </div>
                 {drug.purchases.map((purchase) => (
-                  <div key={purchase.id} className="purchase-row">
+                  <div key={purchase.id} className="purchase-row" style={{ gridTemplateColumns: '1fr 1fr' }}>
                     <span>{purchase.purchaseDate}</span>
                     <span>
                       {purchase.qty} {drug.unit}
                     </span>
-                    <span className="money">{formatCents(purchase.unitCostCents)}</span>
-                    <span className="money">{formatCents(purchase.totalCents)}</span>
                   </div>
                 ))}
               </div>

@@ -13,13 +13,9 @@ test('药品细分单位与按支开方', async ({ page, request }) => {
   await page.getByTestId('stock-base').fill('5')
   await page.getByTestId('stock-adjust-save').click()
   await page.getByTestId('drug-warning').fill('2')
-  await page.getByTestId('drug-cost').fill('10')
-  await page.getByTestId('drug-price').fill('50')
   await page.getByTestId('add-drug-subunit').click()
   await page.getByTestId('drug-subunit-unit-0').fill('支')
   await page.getByTestId('drug-subunit-factor-0').fill('7')
-  await page.getByTestId('drug-subunit-price-0').fill('8')
-  await page.getByTestId('drug-subunit-cost-0').fill('2')
   await page.getByTestId('save-drug').click()
   await page.waitForSelector('[data-testid="drug-detail-page"]')
 

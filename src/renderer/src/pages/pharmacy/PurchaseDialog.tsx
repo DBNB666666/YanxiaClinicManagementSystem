@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import type { DrugDetail } from '@shared/types/models'
-import { centsToInput, formatCents, toCents } from '@shared/money'
 import { todayIso } from '@shared/date'
 import { Button, Dialog, Field, TextInput } from '../../components/Ui'
 import { useToast } from '../../context/ToastProvider'
@@ -17,28 +16,19 @@ export function PurchaseDialog({ open, drug, onClose, onSuccess }: PurchaseDialo
   const { showToast } = useToast()
   const [date, setDate] = useState(todayIso())
   const [qty, setQty] = useState('1')
-  const [unitCost, setUnitCost] = useState('0.00')
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (open && drug) {
       setDate(todayIso())
       setQty('1')
-      setUnitCost(centsToInput(drug.costCents))
     }
   }, [open, drug])
 
   if (!drug) return null
 
   const qtyNumber = Math.max(0, Math.floor(Number(qty) || 0))
-  const unitCostCents = (() => {
-    try {
-      return toCents(unitCost || '0')
-    } catch {
-      return 0
-    }
-  })()
-  const totalCents = qtyNumber * unitCostCents
+  const unitCostCents = 0
   const factor = totalUnitFactor(drug.units)
   const nextStockUnits = drug.stockUnits + qtyNumber * factor
   const nextStockLabel = formatDrugStock({
@@ -113,34 +103,14 @@ export function PurchaseDialog({ open, drug, onClose, onSuccess }: PurchaseDialo
             </div>
           </Field>
         </div>
-        <div className="span-6">
-          <Field label="单位成本" required>
-            <div className="input-group">
-              <span className="unit">¥</span>
-              <TextInput
-                value={unitCost}
-                inputMode="decimal"
-                data-testid="purchase-cost"
-                onChange={(event) => setUnitCost(event.target.value)}
-              />
-            </div>
-          </Field>
-        </div>
         <div className="span-12">
           <div className="fee-panel" style={{ padding: 12 }}>
-            <div className="fee-row">
-              <span className="fee-label">本次金额</span>
-              <span className="fee-value">{formatCents(totalCents)}</span>
-            </div>
             <div className="fee-row">
               <span className="fee-label">确认后库存</span>
               <span className="fee-value">
                 {formatDrugStock(drug)} → {nextStockLabel}
               </span>
             </div>
-          </div>
-          <div className="field-hint" style={{ marginTop: 8 }}>
-            本次单位成本将作为该药品的新成本价；历史处方不受影响。
           </div>
         </div>
       </div>
