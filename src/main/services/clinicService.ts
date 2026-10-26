@@ -664,14 +664,17 @@ export class ClinicService {
       qty_units: number
       drug_id: number
     }>(
-      `SELECT b.batch_id, b.qty_units, d.drug_id
+      `SELECT b.item_id, b.batch_id, b.qty_units, d.drug_id
        FROM prescription_item_batches b
        JOIN prescription_items d ON d.id = b.item_id
        WHERE b.item_id IN (${placeholders})`,
       itemIds
     )
     const drugIds = new Set<number>()
+    const allocatedItems = new Set<number>()
     for (const allocation of allocations) {
+      const itemId = Number((allocation as { item_id?: number }).item_id ?? 0)
+      if (itemId) allocatedItems.add(itemId)
       this.store.run('UPDATE drug_batches SET qty_units = qty_units + ? WHERE id = ?', [
         Number(allocation.qty_units),
         Number(allocation.batch_id)
@@ -682,6 +685,36 @@ export class ClinicService {
       `DELETE FROM prescription_item_batches WHERE item_id IN (${placeholders})`,
       itemIds
     )
+    for (const itemId of itemIds) {
+      if (allocatedItems.has(itemId)) continue
+      const item = this.store.queryOne<PrescriptionItemRow>(
+        'SELECT * FROM prescription_items WHERE id = ?',
+        [itemId]
+      )
+      if (!item) continue
+      const drugId = Number(item.drug_id)
+      const factor = totalUnitFactor(this.getDrugUnits(drugId))
+      const units = Math.round(Number(item.qty) * Number(item.unit_factor ?? 1) * factor)
+      const batch = this.store.queryOne<DrugBatchRow>(
+        'SELECT * FROM drug_batches WHERE drug_id = ? ORDER BY id ASC LIMIT 1',
+        [drugId]
+      )
+      if (batch) {
+        this.store.run('UPDATE drug_batches SET qty_units = qty_units + ? WHERE id = ?', [
+          units,
+          Number(batch.id)
+        ])
+      } else {
+        this.store.insert(
+          `INSERT INTO drug_batches
+            (drug_id, production_date, shelf_life_years, shelf_life_months, shelf_life_days,
+             expiry_date, expiry_ack_date, qty_units, created_at)
+           VALUES (?, '', 0, 0, 0, '', '', ?, ?)`,
+          [drugId, units, nowIso()]
+        )
+      }
+      drugIds.add(drugId)
+    }
     for (const drugId of drugIds) this.recalculateDrugStock(drugId)
   }
 

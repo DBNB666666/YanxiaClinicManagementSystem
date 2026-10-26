@@ -233,6 +233,15 @@ describe('处方', () => {
     expect(ctx.service.getPrescription(created.id).patientName).toBe('张秀兰改')
   })
 
+  it('旧处方没有批次扣减记录时删除仍退回库存', () => {
+    const created = ctx.service.createPrescription(P1)
+    expect(ctx.service.getDrug(1).stockQty).toBe(8)
+    ctx.store.run('DELETE FROM prescription_item_batches')
+    ctx.service.deletePrescription(created.id)
+    expect(ctx.service.getDrug(1).stockQty).toBe(10)
+    expect(ctx.service.getDrug(2).stockQty).toBe(3)
+  })
+
   it('删除处方退回库存并从财务移除', () => {
     const created = ctx.service.createPrescription(P1)
     expect(ctx.service.getDrug(1).stockQty).toBe(8)
