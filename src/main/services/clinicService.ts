@@ -453,6 +453,7 @@ export class ClinicService {
         drug.indications,
         drug.costCents,
         drug.priceCents,
+        drug.isCommon === undefined ? Number(existing.is_common) : drug.isCommon ? 1 : 0,
         nowIso(),
         safeId
       ]
