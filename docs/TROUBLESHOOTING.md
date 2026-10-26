@@ -1,4 +1,4 @@
-﻿# 启动问题排查：双击 exe 没有窗口
+# 启动问题排查：双击 exe 没有窗口
 
 ## 症状
 
@@ -15,7 +15,7 @@
 本机把软件解压到了：
 
 ```text
-E:\Users\HP\Desktop\YanxiaClinicManagementSystem-0.4.2-win-x64
+E:\Users\HP\Desktop\YanxiaClinicManagementSystem-0.5.0-win-x64
 ```
 
 `E:\Users\HP\Desktop` 被某个沙箱/AI 工具设置了 **Low Mandatory Level（低完整性）**，目录下所有文件继承这个标签。Electron 从低完整性目录启动时，Chromium 沙箱/缓存初始化会失败，进程直接退出，所以看不到窗口。
@@ -41,8 +41,8 @@ Mandatory Label\Low Mandatory Level
 把压缩包解压到 **普通（中完整性）目录**，例如：
 
 ```text
-C:\Users\HP\Desktop\YanxiaClinicManagementSystem-0.4.2-win-x64
-C:\Apps\YanxiaClinicManagementSystem-0.4.2-win-x64
+C:\Users\HP\Desktop\YanxiaClinicManagementSystem-0.5.0-win-x64
+C:\Apps\YanxiaClinicManagementSystem-0.5.0-win-x64
 ```
 
 再双击 `yanxia-clinic.exe`。开发者已在本机 `C:\Users\HP\Desktop` 验证可正常打开窗口并创建数据库。

@@ -1,7 +1,7 @@
-﻿# 验收报告（v0.4.2）
+# 验收报告（v0.5.0）
 
 日期：2026-10-24
-版本：0.4.2
+版本：0.5.0
 环境：Windows 11 build 26200 / Node 24.18 / Edge headless / sql.js 1.15.1
 
 ## 1. 自动化结果
@@ -10,7 +10,7 @@
 
 命令：`npm test`
 
-结果：**9 个测试文件、45 条用例全部通过**。
+结果：**9 个测试文件、46 条用例全部通过**。
 
 | 文件 | 覆盖 |
 | --- | --- |
@@ -28,18 +28,19 @@
 
 命令：`npm run test:e2e`
 
-结果：**25 条 UI 用例全部通过**。
+结果：**27 条 UI 用例全部通过**。
 
 | 文件 | 覆盖 |
 | --- | --- |
 | `theme.spec.ts` | 处方首页、三套主题切换、重启后保留 |
-| `pharmacy.spec.ts` | 列表/搜索/视图、点击药品卡片进详情、切换板块后正确返回、面包屑、新增/进货/停用 |
+| `pharmacy.spec.ts` | 列表/搜索/视图、点击卡片进详情、面包屑、新增/进货/停用、用药组合新增与编辑 |
 | `prescription.spec.ts` | 列表/详情/编辑、合并用法、切换板块保留草稿、离开清除新建草稿、面包屑、打印 |
-| `finance.spec.ts` | 日/周/月/年汇总、图表、期间明细抽屉 |
+| `finance.spec.ts` | 日/周/月/年处方费用营业额、图表、期间明细抽屉 |
 | `notification.spec.ts` | 未读红点、通知抽屉、跳转药品详情、已读消红点 |
 | `print.spec.ts` | 图片模板预览、Rp 示例格式、130×190mm 单张 PDF、批量导出多页、无页脚 |
 | `signature.spec.ts` | 签名图上传、保存到用户设置、打印预览拖动/等比缩放并保存坐标 |
 | `subunits.spec.ts` | 建 5盒+7支/盒药品、按支开方、库存整数变 4盒6支 |
+| `combos.spec.ts` | 药房组合、临时组合、多个组合、组内细分单位/用法、组合打印分组 |
 
 ### 1.3 打包启动（低完整性目录）
 
@@ -47,7 +48,7 @@
 
 结果：**通过**。
 
-- 把 v0.4.2 zip 解压到 `E:\Users\HP\Desktop\YanxiaClinicManagementSystem\.tmp\package-launch-test`（继承 Low Mandatory Level）；
+- 把 v0.5.0 zip 解压到 `E:\Users\HP\Desktop\YanxiaClinicManagementSystem\.tmp\package-launch-test`（继承 Low Mandatory Level）；
 - 运行 `启动燕霞诊所管理系统.cmd`；
 - 脚本把程序复制到 `%TEMP%\yanxia-package-test-target`（普通完整性目录）；
 - 12–20 秒内出现窗口“燕霞诊所管理系统”，并创建 `data/clinic.db`；
@@ -57,7 +58,7 @@
 
 命令：`npm run verify`
 
-结果：**通过**（typecheck + lint + 45 条测试 + 构建）。
+结果：**通过**（typecheck + lint + 46 条测试 + 构建）。
 
 ## 2. 与 PRD 验收标准的对应
 
@@ -78,10 +79,10 @@
 ## 4. 交付物
 
 - 源代码（Electron + React + TypeScript）。
-- 绿色版 zip：`release/YanxiaClinicManagementSystem-0.4.2-win-x64.zip`。
+- 绿色版 zip：`release/YanxiaClinicManagementSystem-0.5.0-win-x64.zip`。
 - 使用说明、已知问题、技术验证记录。
 - 本报告。
 
 ## 5. 结论
 
-自动化范围（45 + 25 + 1 打包启动）全部通过；核心业务、处方详情、规范用药打印、无 Rp/无页脚 PDF、签名图拖动缩放、板块状态保留、正确返回、顶部层级导航、离开清草稿、药品细分单位、最细单位整数库存与各层总量已具备交付条件。系统打印/实体打印机属于目标机器手工复验项。
+自动化范围（46 + 27 + 1 打包启动）全部通过；核心业务、手工处方费用、营业额财务、药房库存、用药组合与组合打印、规范用药 PDF、签名图、层级导航与整数库存已具备交付条件。系统打印/实体打印机属于目标机器手工复验项。
