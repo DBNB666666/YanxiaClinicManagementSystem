@@ -7,6 +7,19 @@ test.beforeEach(async ({ request }) => {
   await resetData(request)
 })
 
+test('打印预览切换板块后保留处方且返回详情', async ({ page }) => {
+  await openApp(page, '/#/prescriptions/print?ids=1', '[data-testid="print-page"]')
+  await expect(page.frameLocator('.print-frame').getByText('张秀兰').first()).toBeVisible()
+  await expect(page.locator('.print-frame')).toHaveAttribute('scrolling', 'no')
+  await page.getByRole('link', { name: '药房' }).click()
+  await page.waitForSelector('[data-testid="pharmacy-page"]')
+  await page.getByRole('link', { name: '处方' }).click()
+  await page.waitForSelector('[data-testid="print-page"]')
+  await expect(page.frameLocator('.print-frame').getByText('张秀兰').first()).toBeVisible()
+  await page.getByRole('button', { name: '返回' }).click()
+  await page.waitForSelector('[data-testid="prescription-detail-page"]')
+})
+
 test('批量导出合并且每张从新页开始', async ({ request }) => {
   const second = await apiCall<{ id: number }>(request, 'prescriptions', 'create', [
     {

@@ -31,15 +31,16 @@ export function AppShell(): React.JSX.Element {
       (item) => location.pathname === item.to || location.pathname.startsWith(`${item.to}/`)
     )
     if (!current) return
-    if (lastPaths[current.to] === location.pathname) return
-    const next = { ...lastPaths, [current.to]: location.pathname }
+    const currentPath = `${location.pathname}${location.search}`
+    if (lastPaths[current.to] === currentPath) return
+    const next = { ...lastPaths, [current.to]: currentPath }
     setLastPaths(next)
     try {
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next))
     } catch {
       // ignore session storage failures
     }
-  }, [location.pathname, lastPaths])
+  }, [location.pathname, location.search, lastPaths])
 
   return (
     <div className="app-shell">
