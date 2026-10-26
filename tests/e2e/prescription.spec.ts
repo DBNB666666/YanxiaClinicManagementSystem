@@ -113,9 +113,8 @@ test('编辑处方数量按差额扣库存', async ({ page, request }) => {
     costCents: number
     totalCents: number
   }>(request, 'prescriptions', 'get', [1])
-  expect(detail.drugAmountCents).toBe(6600)
-  expect(detail.costCents).toBe(2900)
-  expect(detail.totalCents).toBe(8600)
+  expect(detail.feeCents).toBe(6800)
+  expect(detail.totalCents).toBe(6800)
   const drug = await apiCall<{ stockQty: number }>(request, 'drugs', 'get', [1])
   expect(drug.stockQty).toBe(7)
 })
@@ -130,6 +129,7 @@ test('新建处方并从药房添加用药', async ({ page, request }) => {
   await page.getByTestId('rx-age').fill('30')
   await page.getByTestId('rx-diagnosis').fill('上呼吸道感染')
   await page.getByTestId('rx-doctor').fill('李医生')
+  await page.getByTestId('rx-fee').fill('25.00')
   await expect(page.getByTestId('rx-rp')).toHaveCount(0)
 
   await page.getByTestId('add-medication').click()
@@ -143,10 +143,14 @@ test('新建处方并从药房添加用药', async ({ page, request }) => {
   await page.getByTestId('save-prescription').click()
 
   await page.waitForSelector('[data-testid="prescription-page"]')
-  const list = await apiCall<{ total: number }>(request, 'prescriptions', 'list', [
-    { page: 1, pageSize: 20 }
-  ])
+  const list = await apiCall<{ total: number; items: { patientName: string; feeCents: number }[] }>(
+    request,
+    'prescriptions',
+    'list',
+    [{ page: 1, pageSize: 20 }]
+  )
   expect(list.total).toBe(2)
+  expect(list.items.find((item) => item.patientName === '测试患者')?.feeCents).toBe(2500)
   const drug = await apiCall<{ stockQty: number }>(request, 'drugs', 'get', [1])
   expect(drug.stockQty).toBe(7)
 })
@@ -192,7 +196,7 @@ test('打印预览展示处方内容', async ({ page }) => {
   await expect(page.locator('.print-frame')).toBeVisible()
   const frame = page.frameLocator('.print-frame')
   await expect(frame.getByText('张秀兰').first()).toBeVisible()
-  await expect(frame.getByText('48.00').first()).toBeVisible()
+  await expect(frame.getByText('68.00').first()).toBeVisible()
   await expect(frame.getByText('打印时间')).toHaveCount(0)
   await expect(frame.getByText('嘱托')).toHaveCount(0)
 })

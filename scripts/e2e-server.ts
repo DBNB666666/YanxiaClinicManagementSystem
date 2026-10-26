@@ -77,7 +77,8 @@ function seedDefault(current: ClinicService): void {
       { drugId: 1, qty: 2, usage: '口服', frequency: '每日1次' },
       { drugId: 2, qty: 1, usage: '口服', frequency: '每日2次' }
     ],
-    injectionFeeCents: 2000
+    injectionFeeCents: 2000,
+    feeCents: 6800
   }
   current.createPrescription(p1)
   current.markAllNotificationsRead()

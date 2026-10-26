@@ -46,7 +46,7 @@ interface FormState {
   diagnosis: string
   issueDate: string
   doctor: string
-  injectionFee: string
+  fee: string
 }
 
 const USAGE_OPTIONS = ['口服', '外用', '注射', '含服', '雾化', '滴眼', '滴耳', '鼻饲']
@@ -64,7 +64,7 @@ function emptyForm(lastDoctor: string): FormState {
     diagnosis: '',
     issueDate: todayIso(),
     doctor: lastDoctor,
-    injectionFee: '0.00'
+    fee: '0.00'
   }
 }
 
@@ -112,8 +112,6 @@ export function PrescriptionEditPage(): React.JSX.Element {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [pickerQuery, setPickerQuery] = useState('')
   const [pickerSelected, setPickerSelected] = useState<Set<number>>(new Set())
-  const [manualAmount, setManualAmount] = useState<number | null>(null)
-  const [manualInput, setManualInput] = useState('')
   const [pendingInput, setPendingInput] = useState<PrescriptionInput | null>(null)
   const [pendingPrint, setPendingPrint] = useState(false)
   const [stockDialog, setStockDialog] = useState<string[]>([])
@@ -169,15 +167,10 @@ export function PrescriptionEditPage(): React.JSX.Element {
             diagnosis: detail.diagnosis,
             issueDate: detail.issueDate,
             doctor: detail.doctor,
-            injectionFee: centsToInput(detail.injectionFeeCents)
+            fee: centsToInput(detail.feeCents)
           })
           const mapped = detail.items.map((item) => mapItem(item, allDrugs))
           setItems(mapped)
-          const automatic = mapped.reduce((sum, item) => sum + item.amountCents, 0)
-          if (detail.drugAmountCents !== automatic) {
-            setManualAmount(detail.drugAmountCents)
-            setManualInput(centsToInput(detail.drugAmountCents))
-          }
         } else {
           setForm(emptyForm(settings.lastDoctor))
         }
@@ -188,13 +181,9 @@ export function PrescriptionEditPage(): React.JSX.Element {
             const draft = JSON.parse(rawDraft) as {
               form: FormState
               items: EditItem[]
-              manualAmount: number | null
-              manualInput: string
             }
-            setForm(draft.form)
+            setForm({ ...draft.form, fee: draft.form.fee ?? '0.00' })
             setItems(draft.items)
-            setManualAmount(draft.manualAmount)
-            setManualInput(draft.manualInput)
             restoredDraft = true
           }
         } catch {
@@ -235,26 +224,20 @@ export function PrescriptionEditPage(): React.JSX.Element {
     try {
       sessionStorage.setItem(
         draftKey,
-        JSON.stringify({ form, items, manualAmount, manualInput })
+        JSON.stringify({ form, items })
       )
     } catch {
       // 草稿写入失败不影响继续编辑
     }
-  }, [dirty, draftKey, form, items, manualAmount, manualInput])
+  }, [dirty, draftKey, form, items])
 
-  const automaticAmount = useMemo(
-    () => items.reduce((sum, item) => sum + item.amountCents, 0),
-    [items]
-  )
-  const drugAmountCents = manualAmount ?? automaticAmount
-  const injectionFeeCents = useMemo(() => {
+  const feeCents = useMemo(() => {
     try {
-      return toCents(form.injectionFee || '0')
+      return toCents(form.fee || '0')
     } catch {
       return 0
     }
-  }, [form.injectionFee])
-  const totalCents = drugAmountCents + injectionFeeCents
+  }, [form.fee])
 
   const stockWarnings = useMemo(
     () =>
@@ -364,8 +347,7 @@ export function PrescriptionEditPage(): React.JSX.Element {
       usage: item.usage,
       frequency: ''
     })),
-    injectionFeeCents,
-    manualDrugAmountCents: manualAmount
+    feeCents
   })
 
   const persist = async (input: PrescriptionInput, allowNegativeStock: boolean, print: boolean): Promise<void> => {
@@ -632,12 +614,9 @@ export function PrescriptionEditPage(): React.JSX.Element {
               <table className="med-table" data-testid="medication-table">
                 <thead>
                   <tr>
-                    <th style={{ width: '28%' }}>药品</th>
-                    <th style={{ width: '24%' }}>数量</th>
-                    <th style={{ width: '34%' }}>用法</th>
-                    <th style={{ width: '12%' }} className="right">
-                      金额
-                    </th>
+                    <th style={{ width: '30%' }}>药品</th>
+                    <th style={{ width: '26%' }}>数量</th>
+                    <th style={{ width: '37%' }}>用法</th>
                     <th style={{ width: '7%' }} />
                   </tr>
                 </thead>
@@ -716,7 +695,6 @@ export function PrescriptionEditPage(): React.JSX.Element {
                           onChange={(event) => updateItem(item.key, { usage: event.target.value })}
                         />
                       </td>
-                      <td className="right money">{formatCents(item.amountCents)}</td>
                       <td>
                         <IconButton label={`移除 ${item.drugName}`} danger onClick={() => removeItem(item.key)}>
                           <Trash2 size={15} />
@@ -739,68 +717,19 @@ export function PrescriptionEditPage(): React.JSX.Element {
         <aside className="edit-side">
           <div className="fee-panel">
             <div className="fee-row">
-              <span className="fee-label">药品金额</span>
-              {manualAmount == null ? (
-                <span className="fee-value" data-testid="rx-drug-amount">
-                  {formatCents(drugAmountCents)}
-                </span>
-              ) : (
-                <span className="flex gap-4">
-                  <TextInput
-                    style={{ width: 100, height: 30 }}
-                    value={manualInput}
-                    inputMode="decimal"
-                    onChange={(event) => {
-                      setManualInput(event.target.value)
-                      try {
-                        setManualAmount(toCents(event.target.value))
-                      } catch {
-                        // 保持上一次有效值
-                      }
-                      setDirty(true)
-                    }}
-                  />
-                  <Button
-                    variant="ghost"
-                    size="xs"
-                    onClick={() => {
-                      setManualAmount(null)
-                      setManualInput('')
-                    }}
-                  >
-                    恢复自动
-                  </Button>
-                </span>
-              )}
-            </div>
-            {manualAmount == null ? (
-              <div style={{ textAlign: 'right' }}>
-                <Button
-                  variant="ghost"
-                  size="xs"
-                  onClick={() => {
-                    setManualAmount(automaticAmount)
-                    setManualInput(centsToInput(automaticAmount))
-                  }}
-                >
-                  手动调整
-                </Button>
-              </div>
-            ) : null}
-            <div className="fee-row">
-              <span className="fee-label">注射费</span>
+              <span className="fee-label">处方费用</span>
               <TextInput
-                style={{ width: 110 }}
-                value={form.injectionFee}
+                style={{ width: 130 }}
+                value={form.fee}
                 inputMode="decimal"
-                data-testid="rx-injection-fee"
-                onChange={(event) => setField('injectionFee', event.target.value)}
+                data-testid="rx-fee"
+                onChange={(event) => setField('fee', event.target.value)}
               />
             </div>
             <div className="fee-row fee-total">
-              <span>应收合计</span>
+              <span>处方费用</span>
               <span className="fee-value" data-testid="rx-total">
-                {formatCents(totalCents)}
+                {formatCents(feeCents)}
               </span>
             </div>
           </div>
@@ -828,7 +757,7 @@ export function PrescriptionEditPage(): React.JSX.Element {
 
       <div className="edit-footer">
         <span className="fee-mini">
-          应收合计 <strong>{formatCents(totalCents)}</strong>
+          应收合计 <strong>{formatCents(feeCents)}</strong>
         </span>
         <div className="edit-footer-actions">
           <Button variant="secondary" onClick={requestBack} disabled={saving}>

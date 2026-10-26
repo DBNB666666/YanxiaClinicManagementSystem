@@ -28,7 +28,7 @@ describe('print/pdf', () => {
     expect(html).toContain('template.jpg')
     expect(html).toContain('class="template-bg"')
     expect(html).toContain('张秀兰')
-    expect(html).toContain('48.00')
+    expect(html).toContain('68.00')
     expect(html).toContain('阿莫西林胶囊')
     expect(html).not.toContain('打印时间')
     expect(html).not.toContain('第 1 / 1 页')

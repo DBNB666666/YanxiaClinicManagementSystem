@@ -99,14 +99,13 @@ describe('药品', () => {
 })
 
 describe('处方', () => {
-  it('创建处方扣库存并自动算金额/成本', () => {
+  it('创建处方扣库存并按手工费用记账', () => {
     const result = ctx.service.createPrescription(P1)
     expect(result.warnings).toEqual([])
     expect(ctx.service.getDrug(1).stockQty).toBe(8)
     expect(ctx.service.getDrug(2).stockQty).toBe(2)
     const detail = ctx.service.getPrescription(result.id)
-    expect(detail.drugAmountCents).toBe(4800)
-    expect(detail.injectionFeeCents).toBe(2000)
+    expect(detail.feeCents).toBe(6800)
     expect(detail.totalCents).toBe(6800)
     expect(detail.costCents).toBe(2100)
     expect(detail.items).toHaveLength(2)
@@ -126,7 +125,7 @@ describe('处方', () => {
     expect(detail.costCents).toBe(1500)
   })
 
-  it('编辑数量按差额调整库存并重算', () => {
+  it('编辑数量按差额调整库存且不自动改费用', () => {
     const created = ctx.service.createPrescription(P1)
     const detail = ctx.service.getPrescription(created.id)
     const items = detail.items.map((item) => ({
@@ -146,9 +145,8 @@ describe('处方', () => {
     )
     expect(ctx.service.getDrug(1).stockQty).toBe(7)
     const updated = ctx.service.getPrescription(created.id)
-    expect(updated.drugAmountCents).toBe(6600)
-    expect(updated.costCents).toBe(2900)
-    expect(updated.totalCents).toBe(8600)
+    expect(updated.feeCents).toBe(6800)
+    expect(updated.totalCents).toBe(6800)
   })
 
   it('只修改患者信息不扣减库存', () => {
@@ -203,7 +201,7 @@ describe('处方', () => {
     const item = detail.items.find((entry) => entry.drugId === 1)!
     expect(item.unitPriceCents).toBe(1800)
     expect(item.amountCents).toBe(3600)
-    expect(detail.drugAmountCents).toBe(4800)
+    expect(detail.drugAmountCents).toBe(6800)
   })
 
   it('手动药品金额只影响收费，不影响成本', () => {
@@ -277,7 +275,8 @@ describe('财务', () => {
       doctor: '王医生',
       items: [{ drugId: 1, qty: 1, usage: '口服', frequency: '每日1次' }],
       injectionFeeCents: 0,
-      manualDrugAmountCents: 500
+      manualDrugAmountCents: 500,
+      feeCents: 500
     })
     const day = ctx.service.financeSummary({ period: 'day', anchorDate: '2026-10-20' })
     expect(day.summary).toEqual({

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Pencil, Printer, Trash2 } from 'lucide-react'
-import { formatCents, formatProfit } from '@shared/money'
+import { formatCents } from '@shared/money'
 import { formatDateTime } from '@shared/date'
 import { mergeUsage } from '@shared/prescriptionUsage'
 import {
@@ -56,8 +56,6 @@ export function PrescriptionDetailPage(): React.JSX.Element {
       />
     )
   }
-
-  const profit = prescription.totalCents - prescription.costCents
 
   return (
     <div data-testid="prescription-detail-page">
@@ -160,8 +158,6 @@ export function PrescriptionDetailPage(): React.JSX.Element {
                       <th>药品</th>
                       <th className="num">数量</th>
                       <th>用法</th>
-                      <th className="num">单价</th>
-                      <th className="num">金额</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -175,8 +171,6 @@ export function PrescriptionDetailPage(): React.JSX.Element {
                           {item.qty} {item.unit}
                         </td>
                         <td>{mergeUsage(item.usage, item.frequency) || '—'}</td>
-                        <td className="num money">{formatCents(item.unitPriceCents)}</td>
-                        <td className="num money">{formatCents(item.amountCents)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -189,28 +183,10 @@ export function PrescriptionDetailPage(): React.JSX.Element {
         <aside>
           <section className="detail-panel">
             <h2 className="detail-panel-title">费用</h2>
-            <div className="fee-row">
-              <span className="fee-label">药品金额</span>
-              <span className="fee-value">{formatCents(prescription.drugAmountCents)}</span>
-            </div>
-            <div className="fee-row">
-              <span className="fee-label">注射费</span>
-              <span className="fee-value">{formatCents(prescription.injectionFeeCents)}</span>
-            </div>
             <div className="fee-row fee-total">
-              <span>应收合计</span>
+              <span>处方费用</span>
               <span className="fee-value" data-testid="detail-total">
-                {formatCents(prescription.totalCents)}
-              </span>
-            </div>
-            <div className="fee-row" style={{ marginTop: 10 }}>
-              <span className="fee-label">成本</span>
-              <span className="fee-value">{formatCents(prescription.costCents)}</span>
-            </div>
-            <div className="fee-row">
-              <span className="fee-label">毛利</span>
-              <span className={`fee-value ${profit >= 0 ? 'positive' : 'negative'}`.trim()}>
-                {formatProfit(profit)}
+                {formatCents(prescription.feeCents)}
               </span>
             </div>
           </section>

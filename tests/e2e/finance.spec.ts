@@ -18,7 +18,8 @@ const P2 = {
     { drugId: 2, qty: 1, usage: '口服', frequency: '每日2次' },
     { drugId: 3, qty: 1, usage: '静脉滴注', frequency: '每日1次' }
   ],
-  injectionFeeCents: 0
+  injectionFeeCents: 0,
+  feeCents: 3500
 }
 
 const P3 = {
@@ -31,7 +32,8 @@ const P3 = {
   doctor: '李医生',
   items: [{ drugId: 1, qty: 2, usage: '口服', frequency: '每日2次' }],
   injectionFeeCents: 0,
-  manualDrugAmountCents: 3000
+  manualDrugAmountCents: 3000,
+  feeCents: 3000
 }
 
 test.beforeEach(async ({ request }) => {

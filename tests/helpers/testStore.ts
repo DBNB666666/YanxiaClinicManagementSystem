@@ -94,7 +94,8 @@ export const P1 = {
     { drugId: 1, qty: 2, usage: '口服', frequency: '每日1次' },
     { drugId: 2, qty: 1, usage: '口服', frequency: '每日2次' }
   ],
-  injectionFeeCents: 2000
+  injectionFeeCents: 2000,
+  feeCents: 6800
 }
 
 export const P2 = {
@@ -110,7 +111,8 @@ export const P2 = {
     { drugId: 2, qty: 1, usage: '口服', frequency: '每日2次' },
     { drugId: 3, qty: 1, usage: '静脉滴注', frequency: '每日1次' }
   ],
-  injectionFeeCents: 0
+  injectionFeeCents: 0,
+  feeCents: 3500
 }
 
 export const P3 = {
@@ -123,5 +125,6 @@ export const P3 = {
   doctor: '李医生',
   items: [{ drugId: 1, qty: 2, usage: '口服', frequency: '每日2次' }],
   injectionFeeCents: 0,
-  manualDrugAmountCents: 3000
+  manualDrugAmountCents: 3000,
+  feeCents: 3000
 }

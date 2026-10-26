@@ -91,6 +91,7 @@ interface PrescriptionRow {
   doctor: string
   drug_amount_cents: number
   injection_fee_cents: number
+  fee_cents: number
   total_cents: number
   created_at: string
   updated_at: string
@@ -213,6 +214,7 @@ function mapSummary(row: PrescriptionRow): PrescriptionSummary {
     doctor: row.doctor,
     drugAmountCents: Number(row.drug_amount_cents),
     injectionFeeCents: Number(row.injection_fee_cents),
+    feeCents: Number(row.fee_cents ?? row.total_cents),
     totalCents: Number(row.total_cents),
     costCents: Number(row.cost_cents ?? 0),
     createdAt: row.created_at,
@@ -594,12 +596,9 @@ export class ClinicService {
         }
       })
 
-      const automaticDrugAmount = sumCents(prepared.map((row) => row.amountCents))
-      const drugAmountCents =
-        parsed.manualDrugAmountCents != null
-          ? parsed.manualDrugAmountCents
-          : automaticDrugAmount
-      const totalCents = drugAmountCents + parsed.injectionFeeCents
+      const feeCents = parsed.feeCents ?? 0
+      const drugAmountCents = feeCents
+      const totalCents = feeCents
 
       const warnings = prepared
         .filter((row) => {
@@ -622,8 +621,8 @@ export class ClinicService {
       const prescriptionId = this.store.insert(
         `INSERT INTO prescriptions
           (patient_name, gender, age, diagnosis, issue_date, rp, doctor,
-           drug_amount_cents, injection_fee_cents, total_cents, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           drug_amount_cents, injection_fee_cents, fee_cents, total_cents, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           parsed.patientName,
           parsed.gender,
@@ -633,7 +632,8 @@ export class ClinicService {
           parsed.rp,
           parsed.doctor,
           drugAmountCents,
-          parsed.injectionFeeCents,
+          0,
+          feeCents,
           totalCents,
           now,
           now
@@ -730,12 +730,9 @@ export class ClinicService {
         }
       })
 
-      const automaticDrugAmount = sumCents(prepared.map((row) => row.amountCents))
-      const drugAmountCents =
-        parsed.manualDrugAmountCents != null
-          ? parsed.manualDrugAmountCents
-          : automaticDrugAmount
-      const totalCents = drugAmountCents + parsed.injectionFeeCents
+      const feeCents = parsed.feeCents ?? 0
+      const drugAmountCents = feeCents
+      const totalCents = feeCents
 
       const medicationsUnchanged =
         oldItems.length === parsed.items.length &&
@@ -789,7 +786,7 @@ export class ClinicService {
       this.store.run(
         `UPDATE prescriptions SET patient_name = ?, gender = ?, age = ?, diagnosis = ?,
            issue_date = ?, rp = ?, doctor = ?, drug_amount_cents = ?, injection_fee_cents = ?,
-           total_cents = ?, updated_at = ?
+           fee_cents = ?, total_cents = ?, updated_at = ?
          WHERE id = ?`,
         [
           parsed.patientName,
@@ -800,7 +797,8 @@ export class ClinicService {
           parsed.rp,
           parsed.doctor,
           drugAmountCents,
-          parsed.injectionFeeCents,
+          0,
+          feeCents,
           totalCents,
           now,
           safeId

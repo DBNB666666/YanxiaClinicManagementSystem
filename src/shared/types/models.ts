@@ -101,6 +101,7 @@ export interface Prescription {
   doctor: string
   drugAmountCents: number
   injectionFeeCents: number
+  feeCents: number
   totalCents: number
   costCents: number
   createdAt: string
@@ -133,8 +134,9 @@ export interface PrescriptionInput {
   rp?: string
   doctor: string
   items: PrescriptionItemInput[]
-  injectionFeeCents: number
+  injectionFeeCents?: number
   manualDrugAmountCents?: number | null
+  feeCents?: number
 }
 
 export interface PrescriptionSaveResult {
