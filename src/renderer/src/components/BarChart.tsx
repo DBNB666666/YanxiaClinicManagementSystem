@@ -23,33 +23,23 @@ export function BarChart({ rows }: BarChartProps): React.JSX.Element {
 
   const innerWidth = WIDTH - PADDING.left - PADDING.right
   const innerHeight = HEIGHT - PADDING.top - PADDING.bottom
-  const values = rows.flatMap((row) => [row.revenueCents, row.costCents, row.profitCents, 0])
-  const max = Math.max(...values, 1)
-  const min = Math.min(...values, 0)
-  const span = Math.max(max - min, 1)
-  const yOf = (value: number): number => PADDING.top + ((max - value) / span) * innerHeight
+  const max = Math.max(...rows.map((row) => row.revenueCents), 1)
+  const yOf = (value: number): number => PADDING.top + ((max - value) / max) * innerHeight
   const baseline = yOf(0)
   const groupWidth = innerWidth / rows.length
-  const barWidth = Math.min(14, Math.max(5, groupWidth * 0.16))
-  const gap = Math.max(2, barWidth * 0.3)
+  const barWidth = Math.min(42, Math.max(12, groupWidth * 0.48))
 
-  const gridLines = [0, 0.25, 0.5, 0.75, 1].map((ratio) => {
-    const value = max - span * ratio
-    return { value, y: PADDING.top + innerHeight * ratio }
-  })
+  const gridLines = [0, 0.25, 0.5, 0.75, 1].map((ratio) => ({
+    value: max - max * ratio,
+    y: PADDING.top + innerHeight * ratio
+  }))
 
   return (
     <div>
       <div className="chart-head">
         <div className="chart-legend">
           <span>
-            <i className="legend-dot" style={{ background: 'var(--primary)' }} /> 收入
-          </span>
-          <span>
-            <i className="legend-dot" style={{ background: 'var(--text-tertiary)' }} /> 成本
-          </span>
-          <span>
-            <i className="legend-dot" style={{ background: 'var(--success)' }} /> 盈利
+            <i className="legend-dot" style={{ background: 'var(--primary)' }} /> 处方费用营业额
           </span>
         </div>
       </div>
@@ -57,7 +47,7 @@ export function BarChart({ rows }: BarChartProps): React.JSX.Element {
         className="chart-svg"
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         role="img"
-        aria-label="收入、成本、盈利分组柱状图"
+        aria-label="处方费用营业额柱状图"
       >
         {gridLines.map((line, index) => (
           <g key={index}>
@@ -69,7 +59,13 @@ export function BarChart({ rows }: BarChartProps): React.JSX.Element {
               stroke="var(--divider)"
               strokeWidth={1}
             />
-            <text x={PADDING.left - 10} y={line.y + 4} textAnchor="end" fill="var(--text-tertiary)" fontSize={11}>
+            <text
+              x={PADDING.left - 10}
+              y={line.y + 4}
+              textAnchor="end"
+              fill="var(--text-tertiary)"
+              fontSize={11}
+            >
               {compactMoney(line.value)}
             </text>
           </g>
@@ -78,47 +74,28 @@ export function BarChart({ rows }: BarChartProps): React.JSX.Element {
         {rows.map((row, index) => {
           const groupX = PADDING.left + index * groupWidth
           const center = groupX + groupWidth / 2
-          const revenueX = center - barWidth - gap
-          const costX = center - barWidth / 2
-          const profitX = center + gap
           const revenueY = yOf(row.revenueCents)
-          const costY = yOf(row.costCents)
-          const profitBase = row.profitCents >= 0 ? yOf(row.profitCents) : baseline
-          const profitY = row.profitCents >= 0 ? profitBase : yOf(row.profitCents)
-          const profitHeight = Math.abs(baseline - profitY)
-          const profitColor = row.profitCents >= 0 ? 'var(--success)' : 'var(--danger)'
           return (
             <g key={row.key}>
               <rect
-                x={revenueX}
+                x={center - barWidth / 2}
                 y={revenueY}
                 width={barWidth}
                 height={Math.max(1, baseline - revenueY)}
-                rx={2}
+                rx={3}
                 fill="var(--primary)"
               >
-                <title>{`${row.label} 收入 ${formatCents(row.revenueCents)}`}</title>
+                <title>{`${row.label} 营业额 ${formatCents(row.revenueCents)}`}</title>
               </rect>
-              <rect
-                x={costX}
-                y={costY}
-                width={barWidth}
-                height={Math.max(1, baseline - costY)}
-                rx={2}
-                fill="var(--text-tertiary)"
+              <text
+                x={center}
+                y={revenueY - 6}
+                textAnchor="middle"
+                fill="var(--text-secondary)"
+                fontSize={10}
               >
-                <title>{`${row.label} 成本 ${formatCents(row.costCents)}`}</title>
-              </rect>
-              <rect
-                x={profitX}
-                y={profitY}
-                width={barWidth}
-                height={Math.max(1, profitHeight)}
-                rx={2}
-                fill={profitColor}
-              >
-                <title>{`${row.label} 盈利 ${formatCents(row.profitCents)}`}</title>
-              </rect>
+                {formatCents(row.revenueCents)}
+              </text>
               <text
                 x={center}
                 y={HEIGHT - PADDING.bottom + 18}

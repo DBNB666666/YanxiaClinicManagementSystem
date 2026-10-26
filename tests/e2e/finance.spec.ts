@@ -46,8 +46,6 @@ test('日/周/月/年账本、图表与明细抽屉', async ({ page }) => {
   await openApp(page, '/#/finance', '[data-testid="finance-page"]')
 
   await expect(page.getByTestId('finance-revenue')).toContainText('¥133.00')
-  await expect(page.getByTestId('finance-cost')).toContainText('¥52.00')
-  await expect(page.getByTestId('finance-profit')).toContainText('+¥81.00')
   await expect(page.getByTestId('finance-count')).toContainText('3 张')
 
   await page.getByTestId('finance-row-p-1').click()
@@ -57,8 +55,6 @@ test('日/周/月/年账本、图表与明细抽屉', async ({ page }) => {
 
   await page.getByTestId('finance-tab-week').click()
   await expect(page.getByTestId('finance-revenue')).toContainText('¥133.00')
-  await expect(page.getByTestId('finance-cost')).toContainText('¥52.00')
-  await expect(page.getByTestId('finance-profit')).toContainText('+¥81.00')
   await expect(page.getByTestId('finance-count')).toContainText('3 张')
   await expect(page.getByTestId('finance-chart')).toBeVisible()
   await expect(page.getByTestId(`finance-row-${today}`)).toBeVisible()

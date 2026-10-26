@@ -168,8 +168,6 @@ export interface Settings {
 
 export interface FinanceSummary {
   revenueCents: number
-  costCents: number
-  profitCents: number
   count: number
 }
 
@@ -177,8 +175,6 @@ export interface FinanceRow {
   key: string
   label: string
   revenueCents: number
-  costCents: number
-  profitCents: number
   count: number
 }
 

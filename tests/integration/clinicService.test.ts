@@ -234,8 +234,6 @@ describe('财务', () => {
     const result = ctx.service.financeSummary({ period: 'day', anchorDate: '2026-10-23' })
     expect(result.summary).toEqual({
       revenueCents: 6800,
-      costCents: 2100,
-      profitCents: 4700,
       count: 1
     })
   })
@@ -244,8 +242,6 @@ describe('财务', () => {
     const result = ctx.service.financeSummary({ period: 'week', anchorDate: '2026-10-23' })
     expect(result.summary).toEqual({
       revenueCents: 13300,
-      costCents: 5200,
-      profitCents: 8100,
       count: 3
     })
     expect(result.rows.map((row) => row.key)).toEqual(['2026-10-21', '2026-10-22', '2026-10-23'])
@@ -264,7 +260,7 @@ describe('财务', () => {
     expect(details.items[0].patientName).toBe('张秀兰')
   })
 
-  it('负盈利按收入减成本计算', () => {
+  it('处方费用营业额按手工费用汇总', () => {
     ctx.service.createPrescription({
       patientName: '负盈利患者',
       gender: '男',
@@ -281,8 +277,6 @@ describe('财务', () => {
     const day = ctx.service.financeSummary({ period: 'day', anchorDate: '2026-10-20' })
     expect(day.summary).toEqual({
       revenueCents: 500,
-      costCents: 800,
-      profitCents: -300,
       count: 1
     })
   })

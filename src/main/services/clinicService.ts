@@ -968,26 +968,14 @@ export class ClinicService {
   }
 
   private financeTotals(from: string, to: string): FinanceSummary {
-    const row = this.store.queryOne<{
-      count: number
-      revenue_cents: number
-      cost_cents: number
-    }>(
+    const row = this.store.queryOne<{ count: number; revenue_cents: number }>(
       `SELECT COUNT(*) AS count,
-        COALESCE(SUM(p.drug_amount_cents + p.injection_fee_cents), 0) AS revenue_cents,
-        COALESCE(SUM((
-          SELECT SUM(i.unit_cost_cents * i.qty)
-          FROM prescription_items i WHERE i.prescription_id = p.id
-        )), 0) AS cost_cents
+        COALESCE(SUM(p.fee_cents), 0) AS revenue_cents
        FROM prescriptions p WHERE p.issue_date >= ? AND p.issue_date <= ?`,
       [from, to]
     )
-    const revenue = Number(row?.revenue_cents ?? 0)
-    const cost = Number(row?.cost_cents ?? 0)
     return {
-      revenueCents: revenue,
-      costCents: cost,
-      profitCents: revenue - cost,
+      revenueCents: Number(row?.revenue_cents ?? 0),
       count: Number(row?.count ?? 0)
     }
   }
@@ -1003,14 +991,10 @@ export class ClinicService {
       [date]
     )
     return rows.map((row) => {
-      const revenue = Number(row.drug_amount_cents) + Number(row.injection_fee_cents)
-      const cost = Number(row.cost_cents ?? 0)
       return {
         key: `p-${row.id}`,
         label: `${row.patient_name} · ${row.issue_date}`,
-        revenueCents: revenue,
-        costCents: cost,
-        profitCents: revenue - cost,
+        revenueCents: Number(row.fee_cents ?? row.total_cents),
         count: 1
       }
     })
@@ -1022,15 +1006,10 @@ export class ClinicService {
       group_key: string
       count: number
       revenue_cents: number
-      cost_cents: number
     }>(
       `SELECT ${groupExpr} AS group_key,
         COUNT(*) AS count,
-        COALESCE(SUM(p.drug_amount_cents + p.injection_fee_cents), 0) AS revenue_cents,
-        COALESCE(SUM((
-          SELECT SUM(i.unit_cost_cents * i.qty)
-          FROM prescription_items i WHERE i.prescription_id = p.id
-        )), 0) AS cost_cents
+        COALESCE(SUM(p.fee_cents), 0) AS revenue_cents
        FROM prescriptions p
        WHERE p.issue_date >= ? AND p.issue_date <= ?
        GROUP BY ${groupExpr}
@@ -1038,14 +1017,10 @@ export class ClinicService {
       [from, to]
     )
     return rows.map((row) => {
-      const revenue = Number(row.revenue_cents)
-      const cost = Number(row.cost_cents)
       return {
         key: row.group_key,
         label: getGroupLabel(period, row.group_key),
-        revenueCents: revenue,
-        costCents: cost,
-        profitCents: revenue - cost,
+        revenueCents: Number(row.revenue_cents),
         count: Number(row.count)
       }
     })

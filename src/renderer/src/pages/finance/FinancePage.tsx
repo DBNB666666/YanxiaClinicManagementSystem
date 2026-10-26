@@ -8,15 +8,14 @@ import {
   shiftPeriod,
   todayIso
 } from '@shared/date'
-import { formatCents, formatProfit } from '@shared/money'
+import { formatCents } from '@shared/money'
 import { BarChart } from '../../components/BarChart'
 import {
   Button,
   Drawer,
   EmptyState,
   PageHeader,
-  StatCard,
-  Tag
+  StatCard
 } from '../../components/Ui'
 import { useAsync } from '../../hooks/useAsync'
 
@@ -69,8 +68,6 @@ export function FinancePage(): React.JSX.Element {
       setDetailLoading(false)
     }
   }
-
-  const profitTone = summary && summary.profitCents < 0 ? 'negative' : summary && summary.profitCents > 0 ? 'positive' : undefined
 
   return (
     <div data-testid="finance-page">
@@ -125,16 +122,7 @@ export function FinancePage(): React.JSX.Element {
       ) : (
         <>
           <div className="stat-grid">
-            <StatCard testId="finance-revenue" label="总收入" value={formatCents(summary?.revenueCents ?? 0)} />
-            <StatCard testId="finance-cost" label="总成本" value={formatCents(summary?.costCents ?? 0)} />
-            <StatCard
-              testId="finance-profit"
-              label="盈利"
-              tone={profitTone}
-              value={
-                <span className={profitTone ?? ''}>{formatProfit(summary?.profitCents ?? 0)}</span>
-              }
-            />
+            <StatCard testId="finance-revenue" label="处方费用营业额" value={formatCents(summary?.revenueCents ?? 0)} />
             <StatCard testId="finance-count" label="处方数" value={`${summary?.count ?? 0} 张`} />
           </div>
 
@@ -162,9 +150,7 @@ export function FinancePage(): React.JSX.Element {
                     <tr>
                       <th>{period === 'day' ? '患者' : '期间'}</th>
                       <th className="num">处方数</th>
-                      <th className="num">收入</th>
-                      <th className="num">成本</th>
-                      <th className="num">盈利</th>
+                      <th className="num">处方费用营业额</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -178,10 +164,6 @@ export function FinancePage(): React.JSX.Element {
                         <td>{row.label}</td>
                         <td className="num">{row.count}</td>
                         <td className="num">{formatCents(row.revenueCents)}</td>
-                        <td className="num">{formatCents(row.costCents)}</td>
-                        <td className={`num ${row.profitCents < 0 ? 'negative' : row.profitCents > 0 ? 'positive' : ''}`.trim()}>
-                          {formatProfit(row.profitCents)}
-                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -220,13 +202,9 @@ export function FinancePage(): React.JSX.Element {
                     {item.patientName} · {item.gender} · {item.age}
                   </span>
                   <span className="notification-meta">
-                    {item.issueDate} · {formatCents(item.totalCents)} · 盈利{' '}
-                    {formatProfit(item.totalCents - item.costCents)}
+                    {item.issueDate} · 处方费用 {formatCents(item.feeCents)}
                   </span>
                 </span>
-                <Tag tone={item.totalCents - item.costCents < 0 ? 'danger' : 'success'}>
-                  {item.totalCents - item.costCents < 0 ? '亏损' : '盈利'}
-                </Tag>
               </button>
             ))}
           </div>
