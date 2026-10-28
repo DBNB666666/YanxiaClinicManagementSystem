@@ -40,10 +40,30 @@ export function PurchaseDialog({ open, drug, onClose, onSuccess }: PurchaseDialo
 
   if (!drug) return null
 
-  const qtyNumber = Math.max(0, Math.floor(Number(qty) || 0))
-  const unitCostCents = 0
   const factor = totalUnitFactor(drug.units)
-  const nextStockUnits = drug.stockUnits + qtyNumber * factor
+  const qtyUnits = Math.max(0, Math.round((Number(qty) || 0) * factor))
+  const baseQty = Math.floor(qtyUnits / factor)
+  const looseQty: number[] = []
+  let remainder = qtyUnits - baseQty * factor
+  let cumulative = 1
+  for (const unit of drug.units) {
+    cumulative *= unit.factor
+    const unitSize = factor / cumulative
+    const count = Math.floor(remainder / unitSize)
+    remainder -= count * unitSize
+    looseQty.push(count)
+  }
+  const updateQty = (nextBase: number, nextLoose: number[]): void => {
+    let total = Math.max(0, Math.round(nextBase)) * factor
+    let factorSoFar = 1
+    drug.units.forEach((unit, index) => {
+      factorSoFar *= unit.factor
+      total += Math.max(0, Math.round(nextLoose[index] ?? 0)) * (factor / factorSoFar)
+    })
+    setQty(String(total / factor))
+  }
+  const unitCostCents = 0
+  const nextStockUnits = drug.stockUnits + qtyUnits
   const productionDate = `${productionYear}-${productionMonth.padStart(2, '0')}${
     productionDay ? `-${productionDay.padStart(2, '0')}` : ''
   }`
@@ -59,7 +79,7 @@ export function PurchaseDialog({ open, drug, onClose, onSuccess }: PurchaseDialo
   })
 
   const submit = async (): Promise<void> => {
-    if (qtyNumber <= 0) {
+    if (qtyUnits <= 0) {
       showToast('进货数量必须大于 0', 'warning')
       return
     }
@@ -68,14 +88,14 @@ export function PurchaseDialog({ open, drug, onClose, onSuccess }: PurchaseDialo
       await window.api.drugs.purchase({
         drugId: drug.id,
         purchaseDate: date,
-        qty: qtyNumber,
+        qty: qtyUnits / factor,
         unitCostCents,
         productionDate,
         shelfLifeYears: Number(shelfYears || 0),
         shelfLifeMonths: Number(shelfMonths || 0),
         shelfLifeDays: Number(shelfDays || 0)
       })
-      showToast(`已进货 ${qtyNumber} ${drug.unit}，库存更新为 ${nextStockLabel}`)
+      showToast(`已进货，库存更新为 ${nextStockLabel}`)
       onSuccess()
       onClose()
     } catch (cause) {
@@ -122,10 +142,30 @@ export function PurchaseDialog({ open, drug, onClose, onSuccess }: PurchaseDialo
                 step={1}
                 value={qty}
                 data-testid="purchase-qty"
-                onChange={(event) => setQty(event.target.value)}
+                onChange={(event) => updateQty(Number(event.target.value || 0), looseQty)}
               />
               <span className="unit">{drug.unit}</span>
             </div>
+            {drug.units.length > 0 ? (
+              <div className="date-parts" style={{ marginTop: 6 }}>
+                {drug.units.map((unit, index) => (
+                  <label className="date-part" key={unit.unit}>
+                    <span>{unit.unit}</span>
+                    <TextInput
+                      type="number"
+                      min={0}
+                      value={looseQty[index] ?? 0}
+                      data-testid={`purchase-loose-${index}`}
+                      onChange={(event) => {
+                        const next = [...looseQty]
+                        next[index] = Number(event.target.value || 0)
+                        updateQty(baseQty, next)
+                      }}
+                    />
+                  </label>
+                ))}
+              </div>
+            ) : null}
           </Field>
         </div>
         <div className="span-12">

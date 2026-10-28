@@ -78,6 +78,41 @@ function emptyForm(): DrugForm {
   }
 }
 
+function splitStockUnits(
+  stockUnits: number,
+  totalFactor: number,
+  units: { unit: string; factor: number }[]
+): { base: number; loose: number[] } {
+  let remainder = Math.max(0, Math.round(stockUnits))
+  const base = Math.floor(remainder / totalFactor)
+  remainder -= base * totalFactor
+  const loose: number[] = []
+  let cumulative = 1
+  for (const unit of units) {
+    cumulative *= unit.factor
+    const unitSize = totalFactor / cumulative
+    const count = Math.floor(remainder / unitSize)
+    remainder -= count * unitSize
+    loose.push(count)
+  }
+  return { base, loose }
+}
+
+function composeStockUnits(
+  base: number,
+  loose: number[],
+  totalFactor: number,
+  units: { unit: string; factor: number }[]
+): number {
+  let total = Math.max(0, Math.round(base)) * totalFactor
+  let cumulative = 1
+  units.forEach((unit, index) => {
+    cumulative *= unit.factor
+    total += Math.max(0, Math.round(loose[index] ?? 0)) * (totalFactor / cumulative)
+  })
+  return total
+}
+
 function safeCents(value: string): number {
   try {
     return toCents(value || '0')
@@ -222,6 +257,8 @@ export function DrugEditPage(): React.JSX.Element {
     months: Number(form.shelfMonths || 0),
     days: Number(form.shelfDays || 0)
   })
+  const firstBatchUnits = Math.round(Number(form.stockQty || '0') * totalFactor)
+  const firstBatchParts = splitStockUnits(firstBatchUnits, totalFactor, displayUnits)
   const stockLabel = formatDrugStock({
     unit: form.unit || '单位',
     stockQty: stockUnits / totalFactor,
@@ -266,6 +303,12 @@ export function DrugEditPage(): React.JSX.Element {
     }
     setForm((current) => ({ ...current, stockQty: String(nextUnits / totalFactor) }))
     setStockOpen(false)
+    setDirty(true)
+  }
+
+  const updateFirstBatchQty = (base: number, loose: number[]): void => {
+    const totalUnits = composeStockUnits(base, loose, totalFactor, displayUnits)
+    setForm((current) => ({ ...current, stockQty: String(totalUnits / totalFactor) }))
     setDirty(true)
   }
 
@@ -601,6 +644,40 @@ export function DrugEditPage(): React.JSX.Element {
                   </div>
                 </Field>
               </div>
+              <div className="span-12">
+                <Field label={`批次1数量（${form.unit}）`} hint="整数填写；零头按细分单位填写">
+                  <div className="date-parts">
+                    <label className="date-part">
+                      <span>{form.unit}</span>
+                      <TextInput
+                        type="number"
+                        min={0}
+                        value={firstBatchParts.base}
+                        data-testid="batch-base-0"
+                        onChange={(event) =>
+                          updateFirstBatchQty(Number(event.target.value || 0), firstBatchParts.loose)
+                        }
+                      />
+                    </label>
+                    {displayUnits.map((unit, index) => (
+                      <label className="date-part" key={unit.unit}>
+                        <span>{unit.unit}</span>
+                        <TextInput
+                          type="number"
+                          min={0}
+                          value={firstBatchParts.loose[index] ?? 0}
+                          data-testid={`batch-loose-0-${index}`}
+                          onChange={(event) => {
+                            const loose = [...firstBatchParts.loose]
+                            loose[index] = Number(event.target.value || 0)
+                            updateFirstBatchQty(firstBatchParts.base, loose)
+                          }}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                </Field>
+              </div>
             </div>
           </section>
 
@@ -621,6 +698,19 @@ export function DrugEditPage(): React.JSX.Element {
                 months: Number(batch.shelfMonths || 0),
                 days: Number(batch.shelfDays || 0)
               })
+              const qtyParts = splitStockUnits(
+                Math.round(Number(batch.qty || '0') * totalFactor),
+                totalFactor,
+                displayUnits
+              )
+              const updateBatchQty = (base: number, loose: number[]): void => {
+                const units = composeStockUnits(base, loose, totalFactor, displayUnits)
+                setExtraBatches((current) =>
+                  current.map((row, i) =>
+                    i === index ? { ...row, qty: String(units / totalFactor) } : row
+                  )
+                )
+              }
               return (
                 <div className="extra-batch-row" key={index} data-testid={`extra-batch-${index}`}>
                   <div className="extra-batch-head">
@@ -732,21 +822,33 @@ export function DrugEditPage(): React.JSX.Element {
                   </div>
                   <div className="date-parts" style={{ marginTop: 8 }}>
                     <label className="date-part">
-                      <span>数量（{form.unit || '盒'}）</span>
+                      <span>{form.unit || '盒'}</span>
                       <TextInput
                         type="number"
                         min={0}
-                        value={batch.qty}
+                        value={qtyParts.base}
                         data-testid={`extra-batch-${index}-qty`}
                         onChange={(event) =>
-                          setExtraBatches((current) =>
-                            current.map((row, i) =>
-                              i === index ? { ...row, qty: event.target.value } : row
-                            )
-                          )
+                          updateBatchQty(Number(event.target.value || 0), qtyParts.loose)
                         }
                       />
                     </label>
+                    {displayUnits.map((unit, unitIndex) => (
+                      <label className="date-part" key={unit.unit}>
+                        <span>{unit.unit}</span>
+                        <TextInput
+                          type="number"
+                          min={0}
+                          value={qtyParts.loose[unitIndex] ?? 0}
+                          data-testid={`extra-batch-${index}-loose-${unitIndex}`}
+                          onChange={(event) => {
+                            const loose = [...qtyParts.loose]
+                            loose[unitIndex] = Number(event.target.value || 0)
+                            updateBatchQty(qtyParts.base, loose)
+                          }}
+                        />
+                      </label>
+                    ))}
                     <label className="date-part">
                       <span>到期日</span>
                       <span className="stock-readonly-value">{expiry || '—'}</span>

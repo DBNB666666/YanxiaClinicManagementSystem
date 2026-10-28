@@ -58,7 +58,7 @@ export const drugInputSchema = z.object({
 export const purchaseInputSchema = z.object({
   drugId: z.number().int().positive(),
   purchaseDate: pastOrTodaySchema,
-  qty: z.number().int('进货数量必须是整数').min(1, '进货数量必须大于 0'),
+  qty: z.number().min(0.000001, '进货数量必须大于 0'),
   unitCostCents: z.number().int('单位成本必须是整数分').min(0, '单位成本不能小于 0'),
   productionDate: z.string().trim().optional(),
   shelfLifeYears: z.number().int().min(0).optional(),

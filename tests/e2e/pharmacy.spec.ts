@@ -144,6 +144,66 @@ test('新增药品、进货与停用', async ({ page, request }) => {
   expect(stopped.status).toBe('stopped')
 })
 
+test('批次可按主单位和细分单位录入', async ({ page, request }) => {
+  await openApp(page, '/#/pharmacy/new', '[data-testid="drug-edit-page"]')
+  await page.getByTestId('drug-name').fill('批次细分测试药')
+  await page.getByTestId('drug-unit').fill('大袋')
+  await page.getByTestId('add-drug-subunit').click()
+  await page.getByTestId('drug-subunit-unit-0').fill('包')
+  await page.getByTestId('drug-subunit-factor-0').fill('10')
+  await page.getByTestId('batch-base-0').fill('2')
+  await page.getByTestId('batch-loose-0-0').fill('5')
+  await page.getByTestId('drug-warning').fill('1')
+  await page.getByTestId('add-extra-batch').click()
+  await page.getByTestId('extra-batch-0-qty').fill('3')
+  await page.getByTestId('extra-batch-0-loose-0').fill('7')
+  await page.getByTestId('save-drug').click()
+  await page.waitForSelector('[data-testid="drug-detail-page"]')
+  const list = await apiCall<{ items: { id: number; batches: { qtyUnits: number }[] }[] }>(
+    request,
+    'drugs',
+    'list',
+    [{ query: '批次细分测试药' }]
+  )
+  const created = list.items[0]
+  expect(created.batches.map((batch) => batch.qtyUnits).sort((a, b) => a - b)).toEqual([25, 37])
+  await expect(page.locator('.stock-number')).toContainText('6大袋 2包')
+})
+
+test('进货数量可按主单位和细分单位录入', async ({ page, request }) => {
+  const created = await apiCall<{ id: number }>(request, 'drugs', 'create', [
+    {
+      name: '进货细分测试药',
+      unit: '大袋',
+      inboundDate: '2026-10-01',
+      stockQty: 1.5,
+      warningQty: 1,
+      category: '',
+      supplier: '',
+      indications: '',
+      costCents: 0,
+      priceCents: 0,
+      units: [{ unit: '包', factor: 10, priceCents: 0, costCents: 0 }],
+      batches: [{ productionDate: '2026-10-01', shelfLifeYears: 1, qty: 1.5 }]
+    }
+  ])
+  await openApp(page, `/#/pharmacy/${created.id}`, '[data-testid="drug-detail-page"]')
+  await page.getByTestId('purchase-button').click()
+  await page.getByTestId('purchase-qty').fill('2')
+  await page.getByTestId('purchase-loose-0').fill('3')
+  await expect(page.getByTestId('purchase-qty')).toHaveValue('2.3')
+  await page.getByTestId('confirm-purchase').click()
+  await waitForToast(page, '已进货')
+  const drug = await apiCall<{ stockQty: number; batches: { qtyUnits: number }[] }>(
+    request,
+    'drugs',
+    'get',
+    [created.id]
+  )
+  expect(drug.stockQty).toBeCloseTo(3.8, 5)
+  expect(drug.batches.reduce((sum, batch) => sum + batch.qtyUnits, 0)).toBe(38)
+})
+
 test('新建药品可录入多个批次并汇总库存', async ({ page, request }) => {
   await openApp(page, '/#/pharmacy/new', '[data-testid="drug-edit-page"]')
   await page.getByTestId('drug-name').fill('多批次测试药')
