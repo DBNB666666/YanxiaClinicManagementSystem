@@ -213,6 +213,29 @@ test('库存偏低提示不显示小数', async ({ page, request }) => {
   await expect(page.getByText('库存偏低', { exact: false })).not.toContainText('4.3')
 })
 
+test('批次剩余按整单位和零头显示', async ({ page, request }) => {
+  const created = await apiCall<{ id: number }>(request, 'drugs', 'create', [
+    {
+      name: '批次零头测试药',
+      unit: '大袋',
+      inboundDate: '2026-10-01',
+      stockQty: 10.5,
+      warningQty: 1,
+      category: '',
+      supplier: '',
+      indications: '',
+      costCents: 0,
+      priceCents: 0,
+      units: [{ unit: '包', factor: 10, priceCents: 0, costCents: 0 }],
+      batches: [{ productionDate: '2026-10-01', shelfLifeYears: 1, qty: 10.5 }]
+    }
+  ])
+  const drug = await apiCall<{ batches: { id: number }[] }>(request, 'drugs', 'get', [created.id])
+  await openApp(page, `/#/pharmacy/${created.id}`, '[data-testid="drug-detail-page"]')
+  await expect(page.getByTestId(`batch-row-${drug.batches[0].id}`)).toContainText('10大袋 5包')
+  await expect(page.getByTestId(`batch-row-${drug.batches[0].id}`)).not.toContainText('10.5')
+})
+
 test('药品保质期提醒与确认处理', async ({ page, request }) => {
   const now = new Date()
   await openApp(page, '/#/pharmacy/new', '[data-testid="drug-edit-page"]')

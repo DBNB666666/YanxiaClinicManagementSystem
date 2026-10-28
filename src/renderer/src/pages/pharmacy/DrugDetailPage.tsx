@@ -185,8 +185,12 @@ export function DrugDetailPage(): React.JSX.Element {
                       <strong>生产：{batch.productionDate || '未登记'}</strong>
                       <div className="muted">
                         到期：{batch.expiryDate || '未登记'} · 剩余{' '}
-                        {(batch.qtyUnits / totalUnitFactor(drug.units)).toFixed(2).replace(/\.00$/, '')}{' '}
-                        {drug.unit}
+                        {formatDrugStock({
+                          unit: drug.unit,
+                          stockQty: batch.qtyUnits / totalUnitFactor(drug.units),
+                          stockUnits: batch.qtyUnits,
+                          units: drug.units
+                        })}
                       </div>
                     </div>
                     {batch.expiring ? (
