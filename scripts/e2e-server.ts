@@ -116,7 +116,7 @@ async function exportPdf(ids: number[]): Promise<{ path: string; pageCount: numb
 
 async function dispatch(ns: string, method: string, args: unknown[]): Promise<unknown> {
   if (ns === 'app' && method === 'getInfo') {
-    return { version: '0.6.2', dataDir: dataRoot, lastBackupAt: null }
+    return { version: '1.0.0', dataDir: dataRoot, lastBackupAt: null }
   }
   if (ns === 'settings' && method === 'get') return service.getSettings()
   if (ns === 'settings' && method === 'set') return service.setSettings(args[0] as never)
@@ -185,6 +185,12 @@ async function dispatch(ns: string, method: string, args: unknown[]): Promise<un
   if (ns === 'finance') {
     if (method === 'summary') return service.financeSummary(args[0] as never)
     if (method === 'details') return service.financeDetails(args[0] as never)
+  }
+  if (ns === 'data') {
+    if (method === 'export') return service.exportBackup(String(args[0] ?? '1.0.0'))
+    if (method === 'import') return service.importBackup(args[0])
+    if (method === 'status') return service.getDataStatus()
+    if (method === 'setInterval') return service.setBackupInterval(Number(args[0]))
   }
   if (ns === 'notifications') {
     if (method === 'list') return service.listNotifications()

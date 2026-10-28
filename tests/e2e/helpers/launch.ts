@@ -10,6 +10,7 @@ const API_SCRIPT = `
     prescriptions: ['list', 'get', 'create', 'update', 'remove'],
     finance: ['summary', 'details'],
     notifications: ['list', 'unreadCount', 'markRead', 'markAllRead'],
+  data: ['export', 'import', 'status', 'setInterval'],
     print: ['printPrescription', 'exportPdf']
   };
   async function call(ns, method, args) {

@@ -97,6 +97,11 @@ export function registerIpc({ service, dataDir, getAppInfo }: RegisterOptions): 
     wrapWithArg((query: FinanceDetailsQuery) => service.financeDetails(query))
   )
 
+  ipcMain.handle(IPC.dataExport, wrapWithArg((appVersion: string) => service.exportBackup(appVersion)))
+  ipcMain.handle(IPC.dataImport, wrapWithArg((file: unknown) => service.importBackup(file)))
+  ipcMain.handle(IPC.dataStatus, wrap(() => service.getDataStatus()))
+  ipcMain.handle(IPC.dataSetInterval, wrapWithArg((days: number) => service.setBackupInterval(days)))
+
   ipcMain.handle(IPC.notificationsList, wrap(() => service.listNotifications()))
   ipcMain.handle(IPC.notificationsUnreadCount, wrap(() => service.unreadNotificationCount()))
   ipcMain.handle(IPC.notificationsMarkRead, wrapWithArg((id: number) => service.markNotificationRead(id)))

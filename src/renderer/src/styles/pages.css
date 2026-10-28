@@ -1056,3 +1056,66 @@
   border-bottom: 1px solid var(--divider);
   padding-bottom: 8px;
 }
+
+.data-management-button {
+  position: relative;
+}
+
+.topbar-alert-dot {
+  position: absolute;
+  top: 5px;
+  right: 4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--danger);
+}
+
+.data-management {
+  display: grid;
+  gap: 16px;
+}
+
+.data-management-status {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-md);
+}
+
+.data-management-status > div {
+  display: grid;
+  gap: 4px;
+}
+
+.data-management-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.data-management-note {
+  display: flex;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.data-management-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.data-management-button:hover {
+  background: var(--surface-alt);
+  border-color: var(--border);
+}

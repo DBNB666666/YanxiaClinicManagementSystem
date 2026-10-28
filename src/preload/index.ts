@@ -54,6 +54,12 @@ const api: ClinicApi = {
     summary: (query) => invoke(IPC.financeSummary, query),
     details: (query) => invoke(IPC.financeDetails, query)
   },
+  data: {
+    export: (appVersion) => invoke(IPC.dataExport, appVersion),
+    import: (file) => invoke(IPC.dataImport, file),
+    status: () => invoke(IPC.dataStatus),
+    setInterval: (days) => invoke(IPC.dataSetInterval, days)
+  },
   notifications: {
     list: () => invoke(IPC.notificationsList),
     unreadCount: () => invoke(IPC.notificationsUnreadCount),

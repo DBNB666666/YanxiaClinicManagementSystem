@@ -3,6 +3,8 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { NotificationButton } from './NotificationButton'
 import { StatusBar } from './StatusBar'
 import { ThemeMenu } from './ThemeMenu'
+import { Database } from 'lucide-react'
+import { DataManagementDialog } from '../pages/data/DataManagementDialog'
 import { NotificationDrawer } from '../pages/notifications/NotificationDrawer'
 
 const NAV = [
@@ -25,6 +27,8 @@ function loadLastPaths(): Record<string, string> {
 export function AppShell(): React.JSX.Element {
   const location = useLocation()
   const [lastPaths, setLastPaths] = useState<Record<string, string>>(loadLastPaths)
+  const [dataOpen, setDataOpen] = useState(false)
+  const [backupDue, setBackupDue] = useState(false)
 
   useEffect(() => {
     const current = NAV.find(
@@ -41,6 +45,24 @@ export function AppShell(): React.JSX.Element {
       // ignore session storage failures
     }
   }, [location.pathname, location.search, lastPaths])
+
+  useEffect(() => {
+    let cancelled = false
+    const load = (): void => {
+      window.api.data
+        .status()
+        .then((status) => {
+          if (!cancelled) setBackupDue(status.due)
+        })
+        .catch(() => undefined)
+    }
+    load()
+    const timer = window.setInterval(load, 60_000)
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+    }
+  }, [dataOpen])
 
   return (
     <div className="app-shell">
@@ -69,6 +91,16 @@ export function AppShell(): React.JSX.Element {
           ))}
         </nav>
         <div className="topbar-right">
+          <button
+            type="button"
+            className="topbar-action data-management-button"
+            onClick={() => setDataOpen(true)}
+            data-testid="data-management-button"
+          >
+            <Database size={15} />
+            数据管理
+            {backupDue ? <span className="topbar-alert-dot" data-testid="backup-due-dot" /> : null}
+          </button>
           <ThemeMenu />
           <NotificationButton />
         </div>
@@ -80,6 +112,7 @@ export function AppShell(): React.JSX.Element {
       </main>
       <StatusBar />
       <NotificationDrawer />
+      <DataManagementDialog open={dataOpen} onClose={() => setDataOpen(false)} />
     </div>
   )
 }

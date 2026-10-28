@@ -30,6 +30,51 @@ function simplePrescription(overrides: Partial<PrescriptionInput> = {}): Prescri
   }
 }
 
+describe('数据备份', () => {
+  it('导出包含版本时间，重复导入按 UUID 跳过', async () => {
+    const source = ctx
+    source.service.setSettings({ signatureImage: 'data:image/png;base64,AAAA', theme: 'dark' })
+    source.service.createPrescription(P1)
+    const backup = source.service.exportBackup('1.0.0')
+    expect(backup.format).toBe('yanxia-clinic-backup')
+    expect(backup.appVersion).toBe('1.0.0')
+    expect(backup.createdAt).toBeTruthy()
+    expect(backup.data.drugs.length).toBeGreaterThan(0)
+    expect(backup.data.prescriptions.length).toBeGreaterThan(0)
+    expect(backup.data.drugs.every((drug) => drug.uid.length > 0)).toBe(true)
+    expect(source.service.getDataStatus().due).toBe(false)
+
+    const target = await createTestContext()
+    try {
+      target.service.setSettings({ theme: 'light', signatureImage: 'data:image/png;base64,BBBB' })
+      const first = target.service.importBackup(backup)
+      expect(first.drugs).toBe(backup.data.drugs.length)
+      expect(first.prescriptions).toBe(backup.data.prescriptions.length)
+      const second = target.service.importBackup(backup)
+      expect(second.drugs).toBe(0)
+      expect(second.prescriptions).toBe(0)
+      expect(target.service.getSettings().theme).toBe('light')
+      expect(target.service.getSettings().signatureImage).toBe('data:image/png;base64,BBBB')
+      expect(target.service.listDrugs({ page: 1, pageSize: 100 }).total).toBe(backup.data.drugs.length)
+      expect(target.service.listPrescriptions({ page: 1, pageSize: 100 }).total).toBe(
+        backup.data.prescriptions.length
+      )
+    } finally {
+      target.cleanup()
+    }
+  })
+
+  it('备份提醒按天计算，备份后重置', () => {
+    const status = ctx.service.getDataStatus()
+    expect(status.intervalDays).toBe(7)
+    ctx.service.setSettings({ lastBackupAt: new Date(Date.now() - 8 * 86_400_000).toISOString() })
+    expect(ctx.service.getDataStatus().due).toBe(true)
+    ctx.service.exportBackup('1.0.0')
+    expect(ctx.service.getDataStatus().due).toBe(false)
+    expect(ctx.service.setBackupInterval(14).intervalDays).toBe(14)
+  })
+})
+
 describe('药品', () => {
   it('保质期到期生成提醒，确认处理后消失', () => {
     const created = ctx.service.createDrug({

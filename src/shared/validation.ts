@@ -44,6 +44,7 @@ export const drugInputSchema = z.object({
     .array(
       z.object({
         id: z.number().int().positive().optional(),
+        uid: z.string().optional(),
         productionDate: z.string().trim().optional(),
         shelfLifeYears: z.number().int().min(0).optional(),
         shelfLifeMonths: z.number().int().min(0).optional(),
@@ -127,7 +128,9 @@ export const settingsPatchSchema = z
       .optional(),
     signatureX: z.number().min(0).max(1).optional(),
     signatureY: z.number().min(0).max(1).optional(),
-    signatureWidth: z.number().min(0.05).max(0.8).optional()
+    signatureWidth: z.number().min(0.05).max(0.8).optional(),
+    backupIntervalDays: z.number().int().min(1).max(365).optional(),
+    lastBackupAt: z.string().optional()
   })
   .partial()
 

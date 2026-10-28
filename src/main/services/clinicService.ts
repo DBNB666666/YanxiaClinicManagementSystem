@@ -27,11 +27,14 @@ import type {
   PurchaseInput,
   Settings
 } from '../../shared/types/models'
+import { randomUUID } from 'node:crypto'
 import { AppError } from '../../shared/result'
 import { formatCents, multiplyCents } from '../../shared/money'
 import { getGroupLabel, getPeriodRange, nowIso, formatDateTime } from '../../shared/date'
 import { formatDrugStock, totalUnitFactor } from '../../shared/drugUnits'
 import { computeExpiryDate, isExpiryWarning } from '../../shared/expiry'
+import type { BackupFile, BackupImportResult } from '../../shared/backup'
+import { buildBackup, mergeBackup } from './dataTransferService'
 import {
   drugInputSchema,
   drugListQuerySchema,
@@ -48,6 +51,7 @@ import type { SqliteStore } from '../db/store'
 
 interface DrugRow {
   id: number
+  uid: string
   name: string
   unit: string
   inbound_date: string
@@ -84,6 +88,7 @@ interface DrugUnitRow {
 
 interface PurchaseRow {
   id: number
+  uid: string
   drug_id: number
   purchase_date: string
   qty: number
@@ -94,6 +99,7 @@ interface PurchaseRow {
 
 interface ComboRow {
   id: number
+  uid: string
   name: string
   created_at: string
   updated_at: string
@@ -101,6 +107,7 @@ interface ComboRow {
 
 interface DrugBatchRow {
   id: number
+  uid: string
   drug_id: number
   production_date: string
   shelf_life_years: number
@@ -124,6 +131,7 @@ interface ComboItemRow {
 
 interface PrescriptionRow {
   id: number
+  uid: string
   patient_name: string
   gender: Gender
   age: string
@@ -187,7 +195,9 @@ const DEFAULT_SETTINGS: Settings = {
   signatureImage: '',
   signatureX: 0.675,
   signatureY: 0.744,
-  signatureWidth: 0.28
+  signatureWidth: 0.28,
+  backupIntervalDays: 7,
+  lastBackupAt: ''
 }
 
 function mapDrugUnit(row: DrugUnitRow): DrugUnit {
@@ -203,6 +213,7 @@ function mapDrugUnit(row: DrugUnitRow): DrugUnit {
 function mapDrug(row: DrugRow, units: DrugUnitRow[] = [], batches: DrugBatchRow[] = []): Drug {
   return {
     id: Number(row.id),
+    uid: row.uid ?? '',
     name: row.name,
     unit: row.unit,
     units: units.map(mapDrugUnit),
@@ -217,6 +228,7 @@ function mapDrug(row: DrugRow, units: DrugUnitRow[] = [], batches: DrugBatchRow[
     isCommon: Boolean(row.is_common),
     batches: batches.map((batch) => ({
       id: Number(batch.id),
+      uid: batch.uid ?? '',
       drugId: Number(batch.drug_id),
       productionDate: batch.production_date,
       shelfLifeYears: Number(batch.shelf_life_years),
@@ -245,6 +257,7 @@ function mapDrug(row: DrugRow, units: DrugUnitRow[] = [], batches: DrugBatchRow[
 function mapPurchase(row: PurchaseRow): Purchase {
   return {
     id: Number(row.id),
+    uid: row.uid ?? '',
     drugId: Number(row.drug_id),
     purchaseDate: row.purchase_date,
     qty: Number(row.qty),
@@ -278,6 +291,7 @@ function mapItem(row: PrescriptionItemRow): PrescriptionItem {
 function mapSummary(row: PrescriptionRow): PrescriptionSummary {
   return {
     id: Number(row.id),
+    uid: row.uid ?? '',
     patientName: row.patient_name,
     gender: row.gender,
     age: row.age,
@@ -412,11 +426,12 @@ export class ClinicService {
     const expiryDate = computeExpiryDate(productionDate, shelfLife)
     const id = this.store.insert(
       `INSERT INTO drugs
-        (name, unit, inbound_date, production_date, shelf_life_years, shelf_life_months,
+        (uid, name, unit, inbound_date, production_date, shelf_life_years, shelf_life_months,
          shelf_life_days, expiry_date, expiry_ack_date, stock_qty, stock_units, warning_qty,
          category, supplier, indications, cost_cents, price_cents, is_common, status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`,
       [
+        randomUUID(),
         drug.name,
         drug.unit,
         drug.inboundDate,
@@ -444,10 +459,11 @@ export class ClinicService {
     } else {
       this.store.insert(
         `INSERT INTO drug_batches
-          (drug_id, production_date, shelf_life_years, shelf_life_months, shelf_life_days,
+          (uid, drug_id, production_date, shelf_life_years, shelf_life_months, shelf_life_days,
            expiry_date, expiry_ack_date, qty_units, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
+          randomUUID(),
           id,
           productionDate,
           shelfLife.years,
@@ -570,10 +586,11 @@ export class ClinicService {
       } else {
         this.store.insert(
           `INSERT INTO drug_batches
-            (drug_id, production_date, shelf_life_years, shelf_life_months, shelf_life_days,
+            (uid, drug_id, production_date, shelf_life_years, shelf_life_months, shelf_life_days,
              expiry_date, expiry_ack_date, qty_units, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, '', ?, ?)`,
+           VALUES (?, ?, ?, ?, ?, ?, ?, '', ?, ?)`,
           [
+            randomUUID(),
             drugId,
             productionDate,
             shelfLife.years,
@@ -707,10 +724,10 @@ export class ClinicService {
       } else {
         this.store.insert(
           `INSERT INTO drug_batches
-            (drug_id, production_date, shelf_life_years, shelf_life_months, shelf_life_days,
+            (uid, drug_id, production_date, shelf_life_years, shelf_life_months, shelf_life_days,
              expiry_date, expiry_ack_date, qty_units, created_at)
-           VALUES (?, '', 0, 0, 0, '', '', ?, ?)`,
-          [drugId, units, nowIso()]
+           VALUES (?, ?, '', 0, 0, 0, '', '', ?, ?)`,
+          [randomUUID(), drugId, units, nowIso()]
         )
       }
       drugIds.add(drugId)
@@ -821,9 +838,10 @@ export class ClinicService {
     const now = nowIso()
     const result = this.store.transaction(() => {
       const purchaseId = this.store.insert(
-        `INSERT INTO purchases (drug_id, purchase_date, qty, unit_cost_cents, total_cents, created_at)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO purchases (uid, drug_id, purchase_date, qty, unit_cost_cents, total_cents, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
+          randomUUID(),
           parsed.drugId,
           parsed.purchaseDate,
           parsed.qty,
@@ -854,10 +872,10 @@ export class ClinicService {
       } else {
         this.store.insert(
           `INSERT INTO drug_batches
-            (drug_id, production_date, shelf_life_years, shelf_life_months, shelf_life_days,
+            (uid, drug_id, production_date, shelf_life_years, shelf_life_months, shelf_life_days,
              expiry_date, expiry_ack_date, qty_units, created_at)
-           VALUES (?, '', 0, 0, 0, '', '', ?, ?)`,
-          [parsed.drugId, parsed.qty * factor, now]
+           VALUES (?, ?, '', 0, 0, 0, '', '', ?, ?)`,
+          [randomUUID(), parsed.drugId, parsed.qty * factor, now]
         )
       }
       this.recalculateDrugStock(parsed.drugId)
@@ -931,8 +949,8 @@ export class ClinicService {
     const now = nowIso()
     const id = this.store.transaction(() => {
       const comboId = this.store.insert(
-        'INSERT INTO medication_combos (name, created_at, updated_at) VALUES (?, ?, ?)',
-        [parsed.name, now, now]
+        'INSERT INTO medication_combos (uid, name, created_at, updated_at) VALUES (?, ?, ?, ?)',
+        [randomUUID(), parsed.name, now, now]
       )
       parsed.items.forEach((item, index) => {
         const drug = this.store.queryOne<DrugRow>('SELECT * FROM drugs WHERE id = ?', [item.drugId])
@@ -993,6 +1011,7 @@ export class ClinicService {
     )
     return {
       id: Number(row.id),
+      uid: row.uid ?? '',
       name: row.name,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
@@ -1116,10 +1135,11 @@ export class ClinicService {
 
       const prescriptionId = this.store.insert(
         `INSERT INTO prescriptions
-          (patient_name, gender, age, diagnosis, issue_date, rp, doctor,
+          (uid, patient_name, gender, age, diagnosis, issue_date, rp, doctor,
            drug_amount_cents, injection_fee_cents, fee_cents, total_cents, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
+          randomUUID(),
           parsed.patientName,
           parsed.gender,
           parsed.age,
@@ -1674,6 +1694,8 @@ export class ClinicService {
         if (row.key === 'signatureX') result.signatureX = value
         if (row.key === 'signatureY') result.signatureY = value
         if (row.key === 'signatureWidth') result.signatureWidth = value
+        if (row.key === 'backupIntervalDays') result.backupIntervalDays = Number(value)
+        if (row.key === 'lastBackupAt') result.lastBackupAt = value
       } catch {
         // ignore malformed setting
       }
@@ -1693,6 +1715,8 @@ export class ClinicService {
     if (parsed.signatureX !== undefined) entries.push(['signatureX', parsed.signatureX])
     if (parsed.signatureY !== undefined) entries.push(['signatureY', parsed.signatureY])
     if (parsed.signatureWidth !== undefined) entries.push(['signatureWidth', parsed.signatureWidth])
+    if (parsed.backupIntervalDays !== undefined) entries.push(['backupIntervalDays', parsed.backupIntervalDays])
+    if (parsed.lastBackupAt !== undefined) entries.push(['lastBackupAt', parsed.lastBackupAt])
     for (const [key, value] of entries) {
       this.store.run(
         `INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)
@@ -1702,6 +1726,45 @@ export class ClinicService {
     }
     this.onDataChanged?.()
     return this.getSettings()
+  }
+
+  // ---------- 数据备份/导入 ----------
+
+  exportBackup(appVersion: string): BackupFile {
+    const backup = buildBackup(this, appVersion)
+    this.setSettings({ lastBackupAt: backup.createdAt })
+    return backup
+  }
+
+  importBackup(input: unknown): BackupImportResult {
+    const result = mergeBackup(this.store, this, input)
+    this.onDataChanged?.()
+    return result
+  }
+
+  getDataStatus(): {
+    lastBackupAt: string
+    intervalDays: number
+    due: boolean
+    daysSince: number | null
+  } {
+    const settings = this.getSettings()
+    const lastBackupAt = settings.lastBackupAt
+    const intervalDays = settings.backupIntervalDays
+    if (!lastBackupAt) return { lastBackupAt: '', intervalDays, due: true, daysSince: null }
+    const daysSince = Math.floor((Date.now() - Date.parse(lastBackupAt)) / 86_400_000)
+    return {
+      lastBackupAt,
+      intervalDays,
+      due: daysSince >= intervalDays,
+      daysSince
+    }
+  }
+
+  setBackupInterval(days: number): { intervalDays: number } {
+    const parsed = settingsPatchSchema.parse({ backupIntervalDays: days })
+    this.setSettings({ backupIntervalDays: parsed.backupIntervalDays })
+    return { intervalDays: parsed.backupIntervalDays ?? 7 }
   }
 
   // ---------- 打印/导出辅助 ----------

@@ -17,7 +17,9 @@ const DEFAULT_SETTINGS: Settings = {
   signatureImage: '',
   signatureX: 0.675,
   signatureY: 0.744,
-  signatureWidth: 0.28
+  signatureWidth: 0.28,
+  backupIntervalDays: 7,
+  lastBackupAt: ''
 }
 
 interface SettingsContextValue {

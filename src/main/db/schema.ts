@@ -1,8 +1,9 @@
-export const SCHEMA_VERSION = 9
+export const SCHEMA_VERSION = 10
 
 export const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS drugs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  uid TEXT NOT NULL DEFAULT '',
   name TEXT NOT NULL,
   unit TEXT NOT NULL,
   inbound_date TEXT NOT NULL,
@@ -38,6 +39,7 @@ CREATE TABLE IF NOT EXISTS drug_units (
 
 CREATE TABLE IF NOT EXISTS medication_combos (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  uid TEXT NOT NULL DEFAULT '',
   name TEXT NOT NULL,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
@@ -54,6 +56,7 @@ CREATE TABLE IF NOT EXISTS medication_combo_items (
 
 CREATE TABLE IF NOT EXISTS drug_batches (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  uid TEXT NOT NULL DEFAULT '',
   drug_id INTEGER NOT NULL REFERENCES drugs(id) ON DELETE CASCADE,
   production_date TEXT NOT NULL DEFAULT '',
   shelf_life_years INTEGER NOT NULL DEFAULT 0,
@@ -75,6 +78,7 @@ CREATE TABLE IF NOT EXISTS prescription_item_batches (
 
 CREATE TABLE IF NOT EXISTS purchases (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  uid TEXT NOT NULL DEFAULT '',
   drug_id INTEGER NOT NULL REFERENCES drugs(id) ON DELETE RESTRICT,
   purchase_date TEXT NOT NULL,
   qty INTEGER NOT NULL CHECK (qty > 0),
@@ -85,6 +89,7 @@ CREATE TABLE IF NOT EXISTS purchases (
 
 CREATE TABLE IF NOT EXISTS prescriptions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  uid TEXT NOT NULL DEFAULT '',
   patient_name TEXT NOT NULL,
   gender TEXT NOT NULL CHECK (gender IN ('男', '女')),
   age TEXT NOT NULL,
@@ -147,6 +152,11 @@ CREATE INDEX IF NOT EXISTS idx_prescriptions_patient ON prescriptions(patient_na
 CREATE INDEX IF NOT EXISTS idx_items_prescription ON prescription_items(prescription_id);
 CREATE INDEX IF NOT EXISTS idx_items_drug ON prescription_items(drug_id);
 CREATE INDEX IF NOT EXISTS idx_drug_units_drug ON drug_units(drug_id, sort_order);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_drugs_uid ON drugs(uid);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_batches_uid ON drug_batches(uid);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_purchases_uid ON purchases(uid);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_prescriptions_uid ON prescriptions(uid);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_combos_uid ON medication_combos(uid);
 CREATE INDEX IF NOT EXISTS idx_batches_drug_expiry ON drug_batches(drug_id, expiry_date);
 CREATE INDEX IF NOT EXISTS idx_item_batches_item ON prescription_item_batches(item_id);
 CREATE INDEX IF NOT EXISTS idx_combo_items_combo ON medication_combo_items(combo_id, sort_order);

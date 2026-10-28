@@ -7,6 +7,7 @@ export type DrugListFilter = 'all' | 'low' | 'stopped' | 'common'
 
 export interface DrugBatch {
   id: number
+  uid: string
   drugId: number
   productionDate: string
   shelfLifeYears: number
@@ -20,6 +21,7 @@ export interface DrugBatch {
 
 export interface DrugBatchInput {
   id?: number
+  uid?: string
   productionDate?: string
   shelfLifeYears?: number
   shelfLifeMonths?: number
@@ -44,6 +46,7 @@ export interface DrugUnitInput {
 
 export interface Drug {
   id: number
+  uid: string
   name: string
   unit: string
   units: DrugUnit[]
@@ -94,6 +97,7 @@ export interface DrugInput {
 
 export interface Purchase {
   id: number
+  uid: string
   drugId: number
   purchaseDate: string
   qty: number
@@ -138,6 +142,7 @@ export interface PrescriptionItem {
 
 export interface Prescription {
   id: number
+  uid: string
   patientName: string
   gender: Gender
   age: string
@@ -186,6 +191,7 @@ export interface MedicationComboItem {
 
 export interface MedicationCombo {
   id: number
+  uid: string
   name: string
   items: MedicationComboItem[]
   createdAt: string
@@ -245,6 +251,8 @@ export interface Settings {
   signatureX: number
   signatureY: number
   signatureWidth: number
+  backupIntervalDays: number
+  lastBackupAt: string
 }
 
 export interface FinanceSummary {

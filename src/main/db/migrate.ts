@@ -1,4 +1,5 @@
 import type initSqlJs from 'sql.js'
+import { randomUUID } from 'node:crypto'
 import { SCHEMA_SQL, SCHEMA_VERSION } from './schema'
 
 type SqlDatabase = initSqlJs.Database
@@ -17,8 +18,8 @@ export function migrate(db: SqlDatabase): number {
   try {
     if (version < 1) {
       db.exec(SCHEMA_SQL)
-      db.run('PRAGMA user_version = 9')
-      version = 9
+      db.run('PRAGMA user_version = 10')
+      version = 10
     } else {
       if (version < 2) {
         db.exec(`
@@ -142,7 +143,19 @@ export function migrate(db: SqlDatabase): number {
         db.run('PRAGMA user_version = 9')
         version = 9
       }
-      db.run('PRAGMA user_version = 9')
+      if (version < 10) {
+        for (const table of ['drugs', 'drug_batches', 'purchases', 'prescriptions', 'medication_combos']) {
+          db.run(`ALTER TABLE ${table} ADD COLUMN uid TEXT NOT NULL DEFAULT ''`)
+          const rows = db.exec(`SELECT id FROM ${table}`)
+          for (const row of rows[0]?.values ?? []) {
+            db.run(`UPDATE ${table} SET uid = ? WHERE id = ?`, [randomUUID(), Number(row[0])])
+          }
+          db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_${table}_uid ON ${table}(uid)`)
+        }
+        db.run('PRAGMA user_version = 10')
+        version = 10
+      }
+      db.run('PRAGMA user_version = 10')
     }
     db.run('COMMIT')
     return version

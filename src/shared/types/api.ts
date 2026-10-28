@@ -20,6 +20,14 @@ import type {
   PurchaseInput,
   Settings
 } from './models'
+import type { BackupFile, BackupImportResult } from '../backup'
+
+export interface DataStatus {
+  lastBackupAt: string
+  intervalDays: number
+  due: boolean
+  daysSince: number | null
+}
 
 export interface ClinicApi {
   app: {
@@ -68,6 +76,12 @@ export interface ClinicApi {
   finance: {
     summary(query: FinanceQuery): Promise<FinanceResult>
     details(query: FinanceDetailsQuery): Promise<FinanceDetails>
+  }
+  data: {
+    export(appVersion: string): Promise<BackupFile>
+    import(file: unknown): Promise<BackupImportResult>
+    status(): Promise<DataStatus>
+    setInterval(days: number): Promise<{ intervalDays: number }>
   }
   notifications: {
     list(): Promise<{ items: Notification[]; unreadCount: number }>
