@@ -1,7 +1,7 @@
-# 验收报告（v0.6.1）
+# 验收报告（v0.6.2）
 
 日期：2026-10-24
-版本：0.6.1
+版本：0.6.2
 环境：Windows 11 build 26200 / Node 24.18 / Edge headless / sql.js 1.15.1
 
 ## 1. 自动化结果
@@ -35,7 +35,7 @@
 | 文件 | 覆盖 |
 | --- | --- |
 | `theme.spec.ts` | 处方首页、三套主题切换、重启后保留 |
-| `pharmacy.spec.ts` | 布局顺序、多批次录入、保质期提醒/确认、分类供应商建议、常用药、用药组合、进货/停用 |
+| `pharmacy.spec.ts` | 布局顺序、多批次细分数量录入、批次剩余格式、保质期提醒/确认、常用药、进货/停用 |
 | `prescription.spec.ts` | 列表/详情/编辑、手动选批、跨批补扣、常用药开方、组合、草稿、打印 |
 | `finance.spec.ts` | 日/周/月/年处方费用营业额、图表、期间明细抽屉 |
 | `notification.spec.ts` | 未读红点、通知抽屉、跳转药品详情、已读消红点 |
@@ -50,7 +50,7 @@
 
 结果：**通过**。
 
-- 把 v0.6.1 zip 解压到 `E:\Users\HP\Desktop\YanxiaClinicManagementSystem\.tmp\package-launch-test`（继承 Low Mandatory Level）；
+- 把 v0.6.2 zip 解压到 `E:\Users\HP\Desktop\YanxiaClinicManagementSystem\.tmp\package-launch-test`（继承 Low Mandatory Level）；
 - 运行 `启动燕霞诊所管理系统.cmd`；
 - 脚本把程序复制到 `%TEMP%\yanxia-package-test-target`（普通完整性目录）；
 - 12–20 秒内出现窗口“燕霞诊所管理系统”，并创建 `data/clinic.db`；
@@ -81,10 +81,10 @@
 ## 4. 交付物
 
 - 源代码（Electron + React + TypeScript）。
-- 绿色版 zip：`release/YanxiaClinicManagementSystem-0.6.1-win-x64.zip`。
+- 绿色版 zip：`release/YanxiaClinicManagementSystem-0.6.2-win-x64.zip`。
 - 使用说明、已知问题、技术验证记录。
 - 本报告。
 
 ## 5. 结论
 
-自动化范围（52 + 37 + 1 打包启动）全部通过；核心业务、手工处方费用、营业额财务、多批次库存与到期提醒、常用药、用药组合与组合打印、固定数量列 PDF、签名交互和打印预览状态已具备交付条件。系统打印/实体打印机属于目标机器手工复验项。
+自动化范围（52 + 40 + 1 打包启动）全部通过；核心业务、手工处方费用、营业额财务、多批次库存与到期提醒、常用药、用药组合与组合打印、固定数量列 PDF、签名交互和打印预览状态已具备交付条件。系统打印/实体打印机属于目标机器手工复验项。
