@@ -4,7 +4,7 @@
   "private": true,
   "description": "燕霞诊所管理系统",
   "author": "DB",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "main": "./out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
@@ -56,5 +56,9 @@
     "typescript-eslint": "8.72.0",
     "vite": "8.3.5",
     "vitest": "5.0.5"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DBNB666666/YanxiaClinicManagementSystem.git"
   }
 }
